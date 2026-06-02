@@ -1,0 +1,45 @@
+# IDE / editor state
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.pytest_cache/
+.coverage
+.tox/
+htmlcov/
+
+# Node (not used yet, but the workflow installs Claude Code CLI in CI runners
+# — node artifacts shouldn't leak into commits if anyone runs anything locally)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local cache / outputs from the diff tool
+# (the tool defaults to ~/.cache/, so this is just a safety net)
+.cache/
+clevertap-sdk-versions/
+clevertap-sdk-diff/
+
+# Logs
+*.log
+err.log
+
+# Env files (no secrets in this repo, but the rule is rule)
+.env
+.env.*
+!.env.example
+
+# OS / misc
+Thumbs.db
+.directory

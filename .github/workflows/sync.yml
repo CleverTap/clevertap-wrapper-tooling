@@ -1,0 +1,282 @@
+name: sync-with-native-release
+
+# Reusable workflow that drives the end-to-end native-release → wrapper-PR flow.
+#
+# Called from each wrapper repo's `.github/workflows/native-release-sync.yml`
+# via `uses: piyush-kukadiya/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1`.
+#
+# Owns: source checkout, branch creation, headless Claude invocation, self-heal
+# loop, lint/build runs, PR opening, cost reporting, Slack notification on failure.
+
+on:
+  workflow_call:
+    inputs:
+      wrapper:
+        description: 'Wrapper name (react-native, flutter, unity, ...). Used to derive the repo: CleverTap/clevertap-<wrapper>.'
+        required: true
+        type: string
+      android_module:
+        description: 'Android module being bumped (core/pushtemplates/hms). Empty string skips Android.'
+        required: false
+        type: string
+        default: ''
+      android_version:
+        description: 'New Android version (e.g. 8.2.0). Empty skips Android.'
+        required: false
+        type: string
+        default: ''
+      ios_module:
+        description: 'iOS module being bumped (core/pushtemplates). Empty string skips iOS.'
+        required: false
+        type: string
+        default: ''
+      ios_version:
+        description: 'New iOS version (e.g. 7.7.0). Empty skips iOS.'
+        required: false
+        type: string
+        default: ''
+      release_name:
+        description: 'Branch suffix; defaults to today YYYY-MM-DD.'
+        required: false
+        type: string
+        default: ''
+      model:
+        description: 'Claude model to use (e.g. sonnet-4-6, opus-4-7).'
+        required: false
+        type: string
+        default: 'sonnet-4-6'
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+      anthropic_api_key:
+        required: true
+      slack_webhook_url:
+        required: true
+
+jobs:
+  sync:
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      # ─── Setup ────────────────────────────────────────────────────────────
+      - name: Sanity-check inputs
+        run: |
+          if [ -z "${{ inputs.android_version }}" ] && [ -z "${{ inputs.ios_version }}" ]; then
+            echo "::error::Both android_version and ios_version are empty. Nothing to sync."
+            exit 1
+          fi
+          if [ -n "${{ inputs.android_version }}" ] && [ -z "${{ inputs.android_module }}" ]; then
+            echo "::error::android_version set but android_module is empty."
+            exit 1
+          fi
+          if [ -n "${{ inputs.ios_version }}" ] && [ -z "${{ inputs.ios_module }}" ]; then
+            echo "::error::ios_version set but ios_module is empty."
+            exit 1
+          fi
+
+      - name: Resolve release name
+        id: release
+        run: |
+          name="${{ inputs.release_name }}"
+          [ -z "$name" ] && name=$(date -u +%Y-%m-%d)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "branch=task/release_${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+          owner: CleverTap
+          repositories: clevertap-${{ inputs.wrapper }}
+
+      - name: Checkout wrapper repo (develop)
+        uses: actions/checkout@v4
+        with:
+          repository: CleverTap/clevertap-${{ inputs.wrapper }}
+          ref: develop
+          token: ${{ steps.app-token.outputs.token }}
+          path: wrapper
+          fetch-depth: 0
+
+      - name: Checkout tooling repo (this repo)
+        uses: actions/checkout@v4
+        with:
+          repository: piyush-kukadiya/clevertap-wrapper-tooling
+          path: tooling
+
+      - name: Bail if branch already exists
+        working-directory: wrapper
+        run: |
+          if git ls-remote --exit-code --heads origin "${{ steps.release.outputs.branch }}"; then
+            echo "::error::Branch ${{ steps.release.outputs.branch }} already exists. Pick a different release_name."
+            exit 1
+          fi
+          git checkout -b "${{ steps.release.outputs.branch }}"
+          git config user.email "clevertap-wrapper-sync[bot]@users.noreply.github.com"
+          git config user.name  "clevertap-wrapper-sync[bot]"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Sanity-check tools
+        run: |
+          claude --version
+          python3 --version
+          node --version
+          which envsubst || brew install gettext
+
+      # ─── Run sync skill per platform ──────────────────────────────────────
+      - name: Sync Android
+        if: inputs.android_version != ''
+        working-directory: wrapper
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+          PLATFORM: android
+          MODULE: ${{ inputs.android_module }}
+          NEW_VERSION: ${{ inputs.android_version }}
+          DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
+        run: |
+          prompt="$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)"
+          claude -p "$prompt" \
+                 --model ${{ inputs.model }} \
+                 --output-format json \
+                 > ${{ github.workspace }}/claude-output-android.json
+          echo "Android sync produced:"
+          jq '. | {surfaced: (.surfaced | length), skipped: (.skipped | length), deferred: (.deferred | length)}' \
+              ${{ github.workspace }}/claude-output-android.json
+
+      - name: Sync iOS
+        if: inputs.ios_version != ''
+        working-directory: wrapper
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+          PLATFORM: ios
+          MODULE: ${{ inputs.ios_module }}
+          NEW_VERSION: ${{ inputs.ios_version }}
+          DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
+        run: |
+          prompt="$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)"
+          claude -p "$prompt" \
+                 --model ${{ inputs.model }} \
+                 --output-format json \
+                 > ${{ github.workspace }}/claude-output-ios.json
+          echo "iOS sync produced:"
+          jq '. | {surfaced: (.surfaced | length), skipped: (.skipped | length), deferred: (.deferred | length)}' \
+              ${{ github.workspace }}/claude-output-ios.json
+
+      # ─── Lint + build with self-heal loop ─────────────────────────────────
+      - name: Lint (with self-heal)
+        working-directory: wrapper
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+          STEP_NAME: lint
+          CMD: 'npm run lint'
+          SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
+          MODEL: ${{ inputs.model }}
+        run: |
+          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh "npm run lint" 3
+
+      - name: Android build (with self-heal)
+        if: inputs.android_version != ''
+        working-directory: wrapper
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+          STEP_NAME: android-build
+          SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
+          MODEL: ${{ inputs.model }}
+        run: |
+          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
+            "cd Example && yarn install && cd android && ./gradlew :app:assembleDebug" 3
+
+      - name: iOS build (with self-heal)
+        if: inputs.ios_version != ''
+        working-directory: wrapper
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+          STEP_NAME: ios-build
+          SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
+          MODEL: ${{ inputs.model }}
+        run: |
+          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
+            "cd Example && yarn install && cd ios && pod install && xcodebuild -workspace CleverTapReactNativeExample.xcworkspace -scheme CleverTapReactNativeExample -configuration Debug -sdk iphonesimulator -derivedDataPath build" 3
+
+      # ─── Commit, push, open PR ────────────────────────────────────────────
+      - name: Commit changes
+        working-directory: wrapper
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::warning::No changes to commit. Sync was a no-op."
+            echo "no_changes=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          git commit -m "$(cat <<EOF
+          task: sync wrapper with native release $(date -u +%Y-%m-%d)
+
+          Android: ${{ inputs.android_module }} ${{ inputs.android_version }}
+          iOS: ${{ inputs.ios_module }} ${{ inputs.ios_version }}
+
+          Auto-generated by clevertap-wrapper-sync via clevertap-wrapper-tooling.
+
+          Co-Authored-By: Claude <noreply@anthropic.com>
+          EOF
+          )"
+
+      - name: Push branch
+        if: env.no_changes != 'true'
+        working-directory: wrapper
+        run: git push origin "${{ steps.release.outputs.branch }}"
+
+      - name: Open combined PR
+        if: env.no_changes != 'true'
+        working-directory: wrapper
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+          ANDROID_MODULE: ${{ inputs.android_module }}
+          ANDROID_VERSION: ${{ inputs.android_version }}
+          IOS_MODULE: ${{ inputs.ios_module }}
+          IOS_VERSION: ${{ inputs.ios_version }}
+          RELEASE_NAME: ${{ steps.release.outputs.name }}
+          BRANCH: ${{ steps.release.outputs.branch }}
+          ANDROID_OUTPUT: ${{ github.workspace }}/claude-output-android.json
+          IOS_OUTPUT: ${{ github.workspace }}/claude-output-ios.json
+        run: |
+          bash ${{ github.workspace }}/tooling/scripts/open-combined-pr.sh
+
+      # ─── Cost report and Slack notification ───────────────────────────────
+      - name: Compute and report cost
+        if: always() && env.no_changes != 'true'
+        env:
+          ANDROID_OUTPUT: ${{ github.workspace }}/claude-output-android.json
+          IOS_OUTPUT: ${{ github.workspace }}/claude-output-ios.json
+          BRANCH: ${{ steps.release.outputs.branch }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: CleverTap/clevertap-${{ inputs.wrapper }}
+          SOFT_CAP_USD: '10'
+        working-directory: wrapper
+        run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
+
+      - name: Slack ping on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.slack_webhook_url }}
+          WRAPPER: ${{ inputs.wrapper }}
+          BRANCH: ${{ steps.release.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash ${{ github.workspace }}/tooling/scripts/slack-notify.sh
+
+      - name: Upload sync outputs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-outputs
+          path: |
+            claude-output-android.json
+            claude-output-ios.json
+          if-no-files-found: ignore
