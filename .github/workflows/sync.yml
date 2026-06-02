@@ -91,13 +91,16 @@ jobs:
         with:
           app-id: ${{ secrets.app_id }}
           private-key: ${{ secrets.app_private_key }}
-          owner: CleverTap
-          repositories: clevertap-${{ inputs.wrapper }}
+          # Owner/repo derived from the CALLING repo (so this works for both
+          # CleverTap/clevertap-react-native and forks like
+          # piyush-kukadiya/clevertap-react-native used for testing).
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Checkout wrapper repo (develop)
         uses: actions/checkout@v4
         with:
-          repository: CleverTap/clevertap-${{ inputs.wrapper }}
+          repository: ${{ github.repository }}
           ref: develop
           token: ${{ steps.app-token.outputs.token }}
           path: wrapper
@@ -257,7 +260,7 @@ jobs:
           IOS_OUTPUT: ${{ github.workspace }}/claude-output-ios.json
           BRANCH: ${{ steps.release.outputs.branch }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          REPO: CleverTap/clevertap-${{ inputs.wrapper }}
+          REPO: ${{ github.repository }}
           SOFT_CAP_USD: '10'
         working-directory: wrapper
         run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
