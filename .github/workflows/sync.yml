@@ -45,6 +45,11 @@ on:
         required: false
         type: string
         default: 'sonnet-4-6'
+      skip_sync:
+        description: 'Skip Claude Sync + post-sync builds. Pre-sync builds still run. Use for debugging the build pipeline without Claude cost.'
+        required: false
+        type: boolean
+        default: false
     secrets:
       app_id:
         required: true
@@ -136,9 +141,48 @@ jobs:
           node --version
           which envsubst || brew install gettext
 
-      # ─── Run sync skill per platform ──────────────────────────────────────
-      - name: Sync Android
+      # ─── Java 17 setup (moved earlier — needed by pre-sync Android build) ─
+      # RN 0.74 gradle plugin works most reliably on Java 17. macos-14 runner
+      # default JDK isn't guaranteed across image revisions.
+      - name: Setup Java 17 (for Android build)
         if: inputs.android_version != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ─── PRE-SYNC BUILD GATE ──────────────────────────────────────────────
+      # Verifies the build pipeline works on the unchanged wrapper checkout
+      # BEFORE we spend Claude tokens on Sync. If pre-sync builds fail, the
+      # job aborts here — no Claude cost incurred.
+      - name: Android build (pre-sync)
+        if: inputs.android_version != ''
+        working-directory: wrapper
+        run: |
+          cd Example
+          npm ci --no-audit --no-fund --legacy-peer-deps
+          cd android
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: iOS build (pre-sync)
+        if: inputs.ios_version != ''
+        working-directory: wrapper
+        run: |
+          cd Example
+          npm ci --no-audit --no-fund --legacy-peer-deps
+          cd ios
+          pod install --repo-update
+          xcodebuild -workspace Example.xcworkspace \
+                     -scheme Example \
+                     -configuration Debug \
+                     -sdk iphonesimulator \
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     build
+
+      # ─── CLAUDE SYNC (skippable via skip_sync) ────────────────────────────
+      - name: Sync Android
+        if: inputs.android_version != '' && !inputs.skip_sync
         working-directory: wrapper
         env:
           ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
@@ -195,7 +239,7 @@ jobs:
               ${{ github.workspace }}/claude-output-android.json || true
 
       - name: Sync iOS
-        if: inputs.ios_version != ''
+        if: inputs.ios_version != '' && !inputs.skip_sync
         working-directory: wrapper
         env:
           ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
@@ -229,24 +273,13 @@ jobs:
           python3 ${{ github.workspace }}/tooling/scripts/summarize-claude-output.py \
               ${{ github.workspace }}/claude-output-ios.json || true
 
-      # ─── Build verification steps ─────────────────────────────────────────
-      # Lint is intentionally NOT run. The wrapper repo's root lint script
-      # globs into Example/ which has a broken .eslintrc.js referencing the
-      # deprecated @react-native-community/eslint-config package. Fixing
-      # that is out of scope for the sync automation — the Android and iOS
-      # builds are the real correctness gate for Claude's edits.
-
-      # Android prereqs: RN 0.74 gradle plugin works most reliably on Java 17.
-      # macos-14 runner default JDK isn't guaranteed across image revisions.
-      - name: Setup Java 17 (for Android build)
-        if: inputs.android_version != ''
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Android build
-        if: inputs.android_version != ''
+      # ─── POST-SYNC BUILD VERIFY ───────────────────────────────────────────
+      # Re-run the same builds on the Claude-edited source. Skipped when
+      # skip_sync=true (no edits were made). Lint is intentionally NOT run
+      # (root lint script globs into Example/ whose .eslintrc.js references
+      # a deprecated package — the builds are the real correctness gate).
+      - name: Android build (post-sync)
+        if: inputs.android_version != '' && !inputs.skip_sync
         working-directory: wrapper
         run: |
           cd Example
@@ -254,8 +287,8 @@ jobs:
           cd android
           ./gradlew :app:assembleDebug --no-daemon
 
-      - name: iOS build
-        if: inputs.ios_version != ''
+      - name: iOS build (post-sync)
+        if: inputs.ios_version != '' && !inputs.skip_sync
         working-directory: wrapper
         run: |
           cd Example
