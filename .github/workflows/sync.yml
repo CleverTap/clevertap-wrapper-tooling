@@ -182,6 +182,7 @@ jobs:
 
       # ─── CLAUDE SYNC (skippable via skip_sync) ────────────────────────────
       - name: Sync Android
+        id: sync_android
         if: inputs.android_version != '' && !inputs.skip_sync
         working-directory: wrapper
         env:
@@ -239,6 +240,7 @@ jobs:
               ${{ github.workspace }}/claude-output-android.json || true
 
       - name: Sync iOS
+        id: sync_ios
         if: inputs.ios_version != '' && !inputs.skip_sync
         working-directory: wrapper
         env:
@@ -279,6 +281,7 @@ jobs:
       # (root lint script globs into Example/ whose .eslintrc.js references
       # a deprecated package — the builds are the real correctness gate).
       - name: Android build (post-sync)
+        id: android_build_post_sync
         if: inputs.android_version != '' && !inputs.skip_sync
         working-directory: wrapper
         run: |
@@ -288,6 +291,7 @@ jobs:
           ./gradlew :app:assembleDebug --no-daemon
 
       - name: iOS build (post-sync)
+        id: ios_build_post_sync
         if: inputs.ios_version != '' && !inputs.skip_sync
         working-directory: wrapper
         run: |
@@ -304,7 +308,18 @@ jobs:
                      build
 
       # ─── Commit, push, open PR ────────────────────────────────────────────
+      # IMPORTANT: these run with !cancelled() so a failing post-sync build
+      # does NOT prevent the PR from opening. The PR gets a `build-failed`
+      # label (set in open-combined-pr.sh based on the build outcomes passed
+      # via env). Reviewer takes over from there — pulls branch, fixes, pushes.
+      # However, they do skip if Sync itself failed (Claude couldn't even
+      # run) or if there were no edits to commit.
       - name: Commit changes
+        if: |
+          !cancelled()
+          && steps.sync_android.outcome != 'failure'
+          && steps.sync_ios.outcome != 'failure'
+          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
         working-directory: wrapper
         run: |
           git add -A
@@ -326,12 +341,22 @@ jobs:
           )"
 
       - name: Push branch
-        if: env.no_changes != 'true'
+        if: |
+          !cancelled()
+          && env.no_changes != 'true'
+          && steps.sync_android.outcome != 'failure'
+          && steps.sync_ios.outcome != 'failure'
+          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
         working-directory: wrapper
         run: git push origin "${{ steps.release.outputs.branch }}"
 
       - name: Open combined PR
-        if: env.no_changes != 'true'
+        if: |
+          !cancelled()
+          && env.no_changes != 'true'
+          && steps.sync_android.outcome != 'failure'
+          && steps.sync_ios.outcome != 'failure'
+          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
         working-directory: wrapper
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -344,6 +369,10 @@ jobs:
           BRANCH: ${{ steps.release.outputs.branch }}
           ANDROID_OUTPUT: ${{ github.workspace }}/claude-output-android.json
           IOS_OUTPUT: ${{ github.workspace }}/claude-output-ios.json
+          # Post-sync build outcomes — open-combined-pr.sh adds a
+          # `build-failed` label if either is "failure".
+          ANDROID_BUILD_OUTCOME: ${{ steps.android_build_post_sync.outcome }}
+          IOS_BUILD_OUTCOME: ${{ steps.ios_build_post_sync.outcome }}
         run: |
           bash ${{ github.workspace }}/tooling/scripts/open-combined-pr.sh
 

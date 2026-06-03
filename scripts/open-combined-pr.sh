@@ -60,6 +60,18 @@ else
     labels="${labels},bug-fix-only"
 fi
 
+# If either post-sync build failed, flag the PR so reviewers know to expect
+# red CI. ANDROID_BUILD_OUTCOME / IOS_BUILD_OUTCOME are step outcomes passed
+# from the workflow ("success", "failure", "skipped", or empty if the step
+# didn't run).
+if [ "${ANDROID_BUILD_OUTCOME:-}" = "failure" ] || [ "${IOS_BUILD_OUTCOME:-}" = "failure" ]; then
+    labels="${labels},build-failed"
+    # Also prepend a clear marker to the PR body so it's visible at a glance.
+    body="> ⚠️ **Post-sync build failed.** Claude's edits compile-failed on one or both platforms. The PR is open anyway — pull the branch locally, fix the build, push. Check the workflow logs for the specific error.
+
+$body"
+fi
+
 # Open the PR
 gh pr create \
     --base develop \
