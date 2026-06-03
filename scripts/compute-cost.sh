@@ -23,8 +23,11 @@ for f in "${ANDROID_OUTPUT:-}" "${IOS_OUTPUT:-}"; do
     [ -z "$f" ] && continue
     [ -f "$f" ] || continue
     any_output=1
-    tokens=$(jq -r '.tokens_used // 0' "$f")
-    cost=$(jq -r '.cost_usd_estimate // 0' "$f")
+    # The Claude CLI's --output-format json envelope has cost+tokens at the
+    # top level. Read those directly rather than relying on what Claude
+    # self-reports inside the result text (which is unreliable).
+    tokens=$(jq -r '(.usage.input_tokens // 0) + (.usage.output_tokens // 0)' "$f")
+    cost=$(jq -r '.total_cost_usd // 0' "$f")
     total_tokens=$(python3 -c "print(int(${total_tokens}) + int(${tokens}))")
     total_cost=$(python3 -c "print(float(${total_cost}) + float(${cost}))")
 done

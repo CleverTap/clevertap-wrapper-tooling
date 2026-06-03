@@ -159,6 +159,7 @@ jobs:
           set +e
           claude -p "$prompt" \
                  --model "${{ inputs.model }}" \
+                 --dangerously-skip-permissions \
                  --output-format json \
                  > ${{ github.workspace }}/claude-output-android.json \
                  2> ${{ github.workspace }}/claude-stderr-android.log
@@ -191,6 +192,7 @@ jobs:
           set +e
           claude -p "$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)" \
                  --model "${{ inputs.model }}" \
+                 --dangerously-skip-permissions \
                  --output-format json \
                  > ${{ github.workspace }}/claude-output-ios.json \
                  2> ${{ github.workspace }}/claude-stderr-ios.log
@@ -216,7 +218,12 @@ jobs:
       - name: Install wrapper dependencies (root, for lint)
         working-directory: wrapper
         run: |
-          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          # Root's devDependencies pin very old eslint plugins (eslint 4.x era)
+          # that don't satisfy modern npm's strict peer-dep resolution.
+          # --legacy-peer-deps reverts to the older heuristic that the lockfile
+          # was generated with.
+          npm ci --no-audit --no-fund --legacy-peer-deps \
+            || npm install --no-audit --no-fund --legacy-peer-deps
 
       - name: Lint (with self-heal)
         working-directory: wrapper
@@ -248,7 +255,7 @@ jobs:
           MODEL: ${{ inputs.model }}
         run: |
           bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
-            "cd Example && npm ci --no-audit --no-fund && cd android && ./gradlew :app:assembleDebug --no-daemon" 3
+            "cd Example && npm ci --no-audit --no-fund --legacy-peer-deps && cd android && ./gradlew :app:assembleDebug --no-daemon" 3
 
       - name: iOS build (with self-heal)
         if: inputs.ios_version != ''
@@ -260,7 +267,7 @@ jobs:
           MODEL: ${{ inputs.model }}
         run: |
           bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
-            "cd Example && npm ci --no-audit --no-fund && cd ios && pod install --repo-update && xcodebuild -workspace Example.xcworkspace -scheme Example -configuration Debug -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO build" 3
+            "cd Example && npm ci --no-audit --no-fund --legacy-peer-deps && cd ios && pod install --repo-update && xcodebuild -workspace Example.xcworkspace -scheme Example -configuration Debug -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO build" 3
 
       # ─── Commit, push, open PR ────────────────────────────────────────────
       - name: Commit changes
