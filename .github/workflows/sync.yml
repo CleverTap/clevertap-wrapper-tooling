@@ -154,12 +154,24 @@ jobs:
           echo "Prompt length: ${#prompt} chars"
           echo "API key length: ${#ANTHROPIC_API_KEY} chars"
           set +x
+          # Explicit allowlist of tools Claude may run without interactive
+          # approval. Bash() entries are command-prefix matches:
+          # - python3 is pinned to the diff tool script (prevents `python3 -c`
+          #   evasions that could exfiltrate secrets via urllib).
+          # - npm / gradle / pod / xcodebuild allow expected build commands
+          #   (the self-heal loop may retrigger these).
+          # - git is read-only operations (push/commit/reset NOT allowed —
+          #   those happen later in the workflow with the App token).
+          # - jq/cat/grep/sed/awk/head/tail/ls/echo/mkdir are inert text utils.
+          # - WebFetch/WebSearch deliberately NOT included (no need; diff
+          #   tool already fetches what's required via Python's urllib).
+          ALLOWED_TOOLS="Read,Edit,Write,Glob,Grep,Bash(python3 ${{ github.workspace }}/tooling/tools/diff_native_api.py:*),Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"
           # stdout goes to the JSON output file; capture stderr separately so we can
           # see actual error messages from claude on failure.
           set +e
           claude -p "$prompt" \
                  --model "${{ inputs.model }}" \
-                 --dangerously-skip-permissions \
+                 --allowed-tools "$ALLOWED_TOOLS" \
                  --output-format json \
                  > ${{ github.workspace }}/claude-output-android.json \
                  2> ${{ github.workspace }}/claude-stderr-android.log
@@ -189,10 +201,12 @@ jobs:
           NEW_VERSION: ${{ inputs.ios_version }}
           DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
         run: |
+          # Same allowlist rationale as Sync Android — see comments there.
+          ALLOWED_TOOLS="Read,Edit,Write,Glob,Grep,Bash(python3 ${{ github.workspace }}/tooling/tools/diff_native_api.py:*),Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"
           set +e
           claude -p "$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)" \
                  --model "${{ inputs.model }}" \
-                 --dangerously-skip-permissions \
+                 --allowed-tools "$ALLOWED_TOOLS" \
                  --output-format json \
                  > ${{ github.workspace }}/claude-output-ios.json \
                  2> ${{ github.workspace }}/claude-stderr-ios.log
