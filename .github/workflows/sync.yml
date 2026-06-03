@@ -265,7 +265,6 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
           SOFT_CAP_USD: '10'
-        working-directory: wrapper
         run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
 
       - name: Slack ping on failure
