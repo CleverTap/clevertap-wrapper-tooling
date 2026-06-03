@@ -188,8 +188,11 @@ jobs:
             exit $rc
           fi
           echo "Android sync produced:"
-          jq '. | {surfaced: (.surfaced | length), skipped: (.skipped | length), deferred: (.deferred | length)}' \
-              ${{ github.workspace }}/claude-output-android.json || cat ${{ github.workspace }}/claude-output-android.json
+          # The CLI's --output-format json wraps Claude's response with cost +
+          # usage at the top level. Claude's structured triage log lives inside
+          # `.result` as a markdown ```json``` block. Extract + summarize.
+          python3 ${{ github.workspace }}/tooling/scripts/summarize-claude-output.py \
+              ${{ github.workspace }}/claude-output-android.json || true
 
       - name: Sync iOS
         if: inputs.ios_version != ''
@@ -223,8 +226,8 @@ jobs:
             exit $rc
           fi
           echo "iOS sync produced:"
-          jq '. | {surfaced: (.surfaced | length), skipped: (.skipped | length), deferred: (.deferred | length)}' \
-              ${{ github.workspace }}/claude-output-ios.json || cat ${{ github.workspace }}/claude-output-ios.json
+          python3 ${{ github.workspace }}/tooling/scripts/summarize-claude-output.py \
+              ${{ github.workspace }}/claude-output-ios.json || true
 
       # ─── Lint + build with self-heal loop ─────────────────────────────────
       # The root and Example/ both use npm (package-lock.json in each). ESLint
@@ -239,16 +242,9 @@ jobs:
           npm ci --no-audit --no-fund --legacy-peer-deps \
             || npm install --no-audit --no-fund --legacy-peer-deps
 
-      - name: Lint (with self-heal)
+      - name: Lint
         working-directory: wrapper
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
-          STEP_NAME: lint
-          CMD: 'npm run lint'
-          SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
-          MODEL: ${{ inputs.model }}
-        run: |
-          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh "npm run lint" 3
+        run: npm run lint
 
       # Android prereqs: RN 0.74 gradle plugin works most reliably on Java 17.
       # macos-14 runner default JDK isn't guaranteed across image revisions.
@@ -259,29 +255,30 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android build (with self-heal)
+      - name: Android build
         if: inputs.android_version != ''
         working-directory: wrapper
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
-          STEP_NAME: android-build
-          SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
-          MODEL: ${{ inputs.model }}
         run: |
-          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
-            "cd Example && npm ci --no-audit --no-fund --legacy-peer-deps && cd android && ./gradlew :app:assembleDebug --no-daemon" 3
+          cd Example
+          npm ci --no-audit --no-fund --legacy-peer-deps
+          cd android
+          ./gradlew :app:assembleDebug --no-daemon
 
-      - name: iOS build (with self-heal)
+      - name: iOS build
         if: inputs.ios_version != ''
         working-directory: wrapper
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
-          STEP_NAME: ios-build
-          SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
-          MODEL: ${{ inputs.model }}
         run: |
-          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
-            "cd Example && npm ci --no-audit --no-fund --legacy-peer-deps && cd ios && pod install --repo-update && xcodebuild -workspace Example.xcworkspace -scheme Example -configuration Debug -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO build" 3
+          cd Example
+          npm ci --no-audit --no-fund --legacy-peer-deps
+          cd ios
+          pod install --repo-update
+          xcodebuild -workspace Example.xcworkspace \
+                     -scheme Example \
+                     -configuration Debug \
+                     -sdk iphonesimulator \
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     build
 
       # ─── Commit, push, open PR ────────────────────────────────────────────
       - name: Commit changes
