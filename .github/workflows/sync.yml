@@ -211,16 +211,23 @@ jobs:
               ${{ github.workspace }}/claude-output-ios.json || cat ${{ github.workspace }}/claude-output-ios.json
 
       # ─── Lint + build with self-heal loop ─────────────────────────────────
+      - name: Install wrapper dependencies (for lint)
+        working-directory: wrapper
+        run: |
+          # The lint script invokes ./node_modules/.bin/eslint so node_modules
+          # has to be populated. Yarn is what the repo uses by convention.
+          yarn install --frozen-lockfile || yarn install
+
       - name: Lint (with self-heal)
         working-directory: wrapper
         env:
           ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
           STEP_NAME: lint
-          CMD: 'npm run lint'
+          CMD: 'yarn lint'
           SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
           MODEL: ${{ inputs.model }}
         run: |
-          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh "npm run lint" 3
+          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh "yarn lint" 3
 
       - name: Android build (with self-heal)
         if: inputs.android_version != ''
