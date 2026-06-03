@@ -229,22 +229,12 @@ jobs:
           python3 ${{ github.workspace }}/tooling/scripts/summarize-claude-output.py \
               ${{ github.workspace }}/claude-output-ios.json || true
 
-      # ─── Lint + build with self-heal loop ─────────────────────────────────
-      # The root and Example/ both use npm (package-lock.json in each). ESLint
-      # config: .eslintrc.json at root (legacy format, eslint v4 dep).
-      - name: Install wrapper dependencies (root, for lint)
-        working-directory: wrapper
-        run: |
-          # Root's devDependencies pin very old eslint plugins (eslint 4.x era)
-          # that don't satisfy modern npm's strict peer-dep resolution.
-          # --legacy-peer-deps reverts to the older heuristic that the lockfile
-          # was generated with.
-          npm ci --no-audit --no-fund --legacy-peer-deps \
-            || npm install --no-audit --no-fund --legacy-peer-deps
-
-      - name: Lint
-        working-directory: wrapper
-        run: npm run lint
+      # ─── Build verification steps ─────────────────────────────────────────
+      # Lint is intentionally NOT run. The wrapper repo's root lint script
+      # globs into Example/ which has a broken .eslintrc.js referencing the
+      # deprecated @react-native-community/eslint-config package. Fixing
+      # that is out of scope for the sync automation — the Android and iOS
+      # builds are the real correctness gate for Claude's edits.
 
       # Android prereqs: RN 0.74 gradle plugin works most reliably on Java 17.
       # macos-14 runner default JDK isn't guaranteed across image revisions.
