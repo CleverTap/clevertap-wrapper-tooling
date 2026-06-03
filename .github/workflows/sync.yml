@@ -160,7 +160,11 @@ jobs:
         working-directory: wrapper
         run: |
           cd Example
-          npm ci --no-audit --no-fund --legacy-peer-deps
+          # Use `npm install`, not `npm ci`: Example's lockfile records the
+          # wrapper's version (via file:../ dep) at lockfile-generation time.
+          # If the wrapper version has since moved, `npm ci` refuses to
+          # proceed. `npm install` updates the lockfile to match reality.
+          npm install --no-audit --no-fund --legacy-peer-deps
           cd android
           ./gradlew :app:assembleDebug --no-daemon
 
@@ -169,7 +173,9 @@ jobs:
         working-directory: wrapper
         run: |
           cd Example
-          npm ci --no-audit --no-fund --legacy-peer-deps
+          # See Android build (pre-sync) for why we use `npm install` here
+          # instead of `npm ci`.
+          npm install --no-audit --no-fund --legacy-peer-deps
           cd ios
           pod install --repo-update
           xcodebuild -workspace Example.xcworkspace \
@@ -286,7 +292,11 @@ jobs:
         working-directory: wrapper
         run: |
           cd Example
-          npm ci --no-audit --no-fund --legacy-peer-deps
+          # Use `npm install`, not `npm ci`: Example's lockfile records the
+          # wrapper's version (via file:../ dep) at lockfile-generation time.
+          # If the wrapper version has since moved, `npm ci` refuses to
+          # proceed. `npm install` updates the lockfile to match reality.
+          npm install --no-audit --no-fund --legacy-peer-deps
           cd android
           ./gradlew :app:assembleDebug --no-daemon
 
@@ -296,7 +306,9 @@ jobs:
         working-directory: wrapper
         run: |
           cd Example
-          npm ci --no-audit --no-fund --legacy-peer-deps
+          # See Android build (pre-sync) for why we use `npm install` here
+          # instead of `npm ci`.
+          npm install --no-audit --no-fund --legacy-peer-deps
           cd ios
           pod install --repo-update
           xcodebuild -workspace Example.xcworkspace \
