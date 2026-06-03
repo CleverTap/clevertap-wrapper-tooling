@@ -306,7 +306,7 @@ jobs:
           BRANCH: ${{ steps.release.outputs.branch }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
-          SOFT_CAP_USD: '10'
+          SOFT_CAP_USD: '3'
         run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
 
       - name: Slack ping on failure

@@ -52,7 +52,7 @@ A single Markdown document, written to stdout. The CI captures it and uses it as
 - Tokens used: <sum across platforms>
 - Approx cost: $<sum>
 - Self-heal attempts: <if known>
-- Soft cap ($10) exceeded: yes/no
+- Soft cap ($3) exceeded: yes/no
 
 ### For the reviewer
 

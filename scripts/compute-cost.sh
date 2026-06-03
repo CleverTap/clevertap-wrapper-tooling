@@ -9,11 +9,11 @@
 #   BRANCH             - PR branch
 #   REPO               - <owner>/<repo> of the wrapper repo
 #   GH_TOKEN           - GitHub token (from App)
-#   SOFT_CAP_USD       - threshold (default 10)
+#   SOFT_CAP_USD       - threshold (default 3)
 
 set -uo pipefail
 
-SOFT_CAP="${SOFT_CAP_USD:-10}"
+SOFT_CAP="${SOFT_CAP_USD:-3}"
 
 total_tokens=0
 total_cost=0.0
