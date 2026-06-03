@@ -151,6 +151,46 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # The Example app's android/app/build.gradle applies the Google
+      # Services plugin (for FCM). It requires a google-services.json that's
+      # gitignored (contains a real Firebase project key). For CI builds we
+      # don't need working Firebase — we just need the plugin to find a
+      # syntactically valid file so the build proceeds.
+      #
+      # Stub package_name MUST match the Example's applicationId (com.reactnct)
+      # or the Google Services plugin rejects the file.
+      - name: Write stub google-services.json
+        if: inputs.android_version != ''
+        run: |
+          cat > ${{ github.workspace }}/wrapper/Example/android/app/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "stub-project-for-ci",
+              "storage_bucket": "stub-project-for-ci.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.reactnct"
+                  }
+                },
+                "api_key": [
+                  { "current_key": "STUB_CI_KEY_NOT_FOR_USE" }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+
       # ─── PRE-SYNC BUILD GATE ──────────────────────────────────────────────
       # Verifies the build pipeline works on the unchanged wrapper checkout
       # BEFORE we spend Claude tokens on Sync. If pre-sync builds fail, the
