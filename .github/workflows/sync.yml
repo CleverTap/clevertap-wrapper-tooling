@@ -211,23 +211,32 @@ jobs:
               ${{ github.workspace }}/claude-output-ios.json || cat ${{ github.workspace }}/claude-output-ios.json
 
       # ─── Lint + build with self-heal loop ─────────────────────────────────
-      - name: Install wrapper dependencies (for lint)
+      # The root and Example/ both use npm (package-lock.json in each). ESLint
+      # config: .eslintrc.json at root (legacy format, eslint v4 dep).
+      - name: Install wrapper dependencies (root, for lint)
         working-directory: wrapper
         run: |
-          # The lint script invokes ./node_modules/.bin/eslint so node_modules
-          # has to be populated. Yarn is what the repo uses by convention.
-          yarn install --frozen-lockfile || yarn install
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
       - name: Lint (with self-heal)
         working-directory: wrapper
         env:
           ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
           STEP_NAME: lint
-          CMD: 'yarn lint'
+          CMD: 'npm run lint'
           SELF_HEAL_PROMPT: ${{ github.workspace }}/tooling/prompts/self-heal.md
           MODEL: ${{ inputs.model }}
         run: |
-          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh "yarn lint" 3
+          bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh "npm run lint" 3
+
+      # Android prereqs: RN 0.74 gradle plugin works most reliably on Java 17.
+      # macos-14 runner default JDK isn't guaranteed across image revisions.
+      - name: Setup Java 17 (for Android build)
+        if: inputs.android_version != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
       - name: Android build (with self-heal)
         if: inputs.android_version != ''
@@ -239,7 +248,7 @@ jobs:
           MODEL: ${{ inputs.model }}
         run: |
           bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
-            "cd Example && yarn install && cd android && ./gradlew :app:assembleDebug" 3
+            "cd Example && npm ci --no-audit --no-fund && cd android && ./gradlew :app:assembleDebug --no-daemon" 3
 
       - name: iOS build (with self-heal)
         if: inputs.ios_version != ''
@@ -251,7 +260,7 @@ jobs:
           MODEL: ${{ inputs.model }}
         run: |
           bash ${{ github.workspace }}/tooling/scripts/run-with-self-heal.sh \
-            "cd Example && yarn install && cd ios && pod install && xcodebuild -workspace CleverTapReactNativeExample.xcworkspace -scheme CleverTapReactNativeExample -configuration Debug -sdk iphonesimulator -derivedDataPath build" 3
+            "cd Example && npm ci --no-audit --no-fund && cd ios && pod install --repo-update && xcodebuild -workspace Example.xcworkspace -scheme Example -configuration Debug -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO build" 3
 
       # ─── Commit, push, open PR ────────────────────────────────────────────
       - name: Commit changes
