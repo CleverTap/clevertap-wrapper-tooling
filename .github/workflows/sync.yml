@@ -62,6 +62,15 @@ jobs:
 
     steps:
       # ─── Setup ────────────────────────────────────────────────────────────
+      # Checkout the tooling repo FIRST so its scripts are available for
+      # post-failure steps (compute-cost.sh, slack-notify.sh) even if a
+      # later step bails out.
+      - name: Checkout tooling repo (this repo)
+        uses: actions/checkout@v4
+        with:
+          repository: piyush-kukadiya/clevertap-wrapper-tooling
+          path: tooling
+
       - name: Sanity-check inputs
         run: |
           if [ -z "${{ inputs.android_version }}" ] && [ -z "${{ inputs.ios_version }}" ]; then
@@ -105,12 +114,6 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: wrapper
           fetch-depth: 0
-
-      - name: Checkout tooling repo (this repo)
-        uses: actions/checkout@v4
-        with:
-          repository: piyush-kukadiya/clevertap-wrapper-tooling
-          path: tooling
 
       - name: Bail if branch already exists
         working-directory: wrapper
@@ -266,7 +269,7 @@ jobs:
         run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
 
       - name: Slack ping on failure
-        if: failure()
+        if: failure() && steps.app-token.outcome == 'success'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.slack_webhook_url }}
           WRAPPER: ${{ inputs.wrapper }}

@@ -17,15 +17,22 @@ SOFT_CAP="${SOFT_CAP_USD:-10}"
 
 total_tokens=0
 total_cost=0.0
+any_output=0
 
 for f in "${ANDROID_OUTPUT:-}" "${IOS_OUTPUT:-}"; do
     [ -z "$f" ] && continue
     [ -f "$f" ] || continue
+    any_output=1
     tokens=$(jq -r '.tokens_used // 0' "$f")
     cost=$(jq -r '.cost_usd_estimate // 0' "$f")
     total_tokens=$(python3 -c "print(int(${total_tokens}) + int(${tokens}))")
     total_cost=$(python3 -c "print(float(${total_cost}) + float(${cost}))")
 done
+
+if [ "$any_output" = "0" ]; then
+    echo "No claude-output files present — sync didn't run. Skipping cost report."
+    exit 0
+fi
 
 printf "Total tokens used: %s\n" "$total_tokens"
 printf "Approx cost: \$%.2f\n" "$total_cost"
