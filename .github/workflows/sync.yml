@@ -147,14 +147,36 @@ jobs:
           NEW_VERSION: ${{ inputs.android_version }}
           DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
         run: |
+          set -x
+          which claude
+          claude --version
           prompt="$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)"
+          echo "Prompt length: ${#prompt} chars"
+          echo "API key length: ${#ANTHROPIC_API_KEY} chars"
+          set +x
+          # stdout goes to the JSON output file; capture stderr separately so we can
+          # see actual error messages from claude on failure.
+          set +e
           claude -p "$prompt" \
-                 --model ${{ inputs.model }} \
+                 --model "${{ inputs.model }}" \
                  --output-format json \
-                 > ${{ github.workspace }}/claude-output-android.json
+                 > ${{ github.workspace }}/claude-output-android.json \
+                 2> ${{ github.workspace }}/claude-stderr-android.log
+          rc=$?
+          set -e
+          if [ $rc -ne 0 ]; then
+            echo "::error::claude exited with $rc"
+            echo "::group::stderr"
+            cat ${{ github.workspace }}/claude-stderr-android.log || true
+            echo "::endgroup::"
+            echo "::group::stdout (truncated)"
+            head -100 ${{ github.workspace }}/claude-output-android.json || true
+            echo "::endgroup::"
+            exit $rc
+          fi
           echo "Android sync produced:"
           jq '. | {surfaced: (.surfaced | length), skipped: (.skipped | length), deferred: (.deferred | length)}' \
-              ${{ github.workspace }}/claude-output-android.json
+              ${{ github.workspace }}/claude-output-android.json || cat ${{ github.workspace }}/claude-output-android.json
 
       - name: Sync iOS
         if: inputs.ios_version != ''
@@ -166,14 +188,27 @@ jobs:
           NEW_VERSION: ${{ inputs.ios_version }}
           DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
         run: |
-          prompt="$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)"
-          claude -p "$prompt" \
-                 --model ${{ inputs.model }} \
+          set +e
+          claude -p "$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)" \
+                 --model "${{ inputs.model }}" \
                  --output-format json \
-                 > ${{ github.workspace }}/claude-output-ios.json
+                 > ${{ github.workspace }}/claude-output-ios.json \
+                 2> ${{ github.workspace }}/claude-stderr-ios.log
+          rc=$?
+          set -e
+          if [ $rc -ne 0 ]; then
+            echo "::error::claude exited with $rc"
+            echo "::group::stderr"
+            cat ${{ github.workspace }}/claude-stderr-ios.log || true
+            echo "::endgroup::"
+            echo "::group::stdout (truncated)"
+            head -100 ${{ github.workspace }}/claude-output-ios.json || true
+            echo "::endgroup::"
+            exit $rc
+          fi
           echo "iOS sync produced:"
           jq '. | {surfaced: (.surfaced | length), skipped: (.skipped | length), deferred: (.deferred | length)}' \
-              ${{ github.workspace }}/claude-output-ios.json
+              ${{ github.workspace }}/claude-output-ios.json || cat ${{ github.workspace }}/claude-output-ios.json
 
       # ─── Lint + build with self-heal loop ─────────────────────────────────
       - name: Lint (with self-heal)
