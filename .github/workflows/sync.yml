@@ -392,6 +392,11 @@ jobs:
           # instead of `npm ci`.
           npm install --no-audit --no-fund --legacy-peer-deps
           cd ios
+          # Claude bumped CleverTap-iOS-SDK in clevertap-react-native.podspec,
+          # but Example/ios/Podfile.lock still pins the old version. Deleting
+          # the lock forces pod install to re-resolve against the new podspec.
+          # The fresh lockfile gets committed as part of the auto-PR.
+          rm -f Podfile.lock
           pod install --repo-update
           xcodebuild -workspace Example.xcworkspace \
                      -scheme Example \

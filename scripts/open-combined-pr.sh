@@ -72,15 +72,50 @@ if [ "${ANDROID_BUILD_OUTCOME:-}" = "failure" ] || [ "${IOS_BUILD_OUTCOME:-}" = 
 $body"
 fi
 
-# Open the PR
-gh pr create \
-    --base develop \
-    --head "${BRANCH}" \
-    --title "$title" \
-    --body "$body" \
-    --label "$labels" || {
-        echo "::error::Failed to open PR. The branch may already have an open PR."
+# Ensure the labels we want to use actually exist on the repo. `gh label
+# create --force` creates them if missing or updates color/desc if present
+# — idempotent. Without this, `gh pr create --label X` fails if X doesn't
+# exist on the repo (common for fresh forks). Colors are GitHub's standard
+# hex (without #).
+declare -A LABEL_COLORS=(
+    [auto-generated]="ededed"   # neutral gray
+    [bug-fix-only]="0e8a16"     # green
+    [new-api]="1d76db"          # blue
+    [breaking-change]="b60205"  # red
+    [build-failed]="d93f0b"     # orange-red
+)
+for label in "${!LABEL_COLORS[@]}"; do
+    color="${LABEL_COLORS[$label]}"
+    gh label create "$label" --color "$color" --force 2>/dev/null \
+        || echo "::warning::could not ensure label '$label' (may be a permissions issue; continuing)"
+done
+
+# Open the PR. If --label fails, retry without labels so we at least get
+# the PR opened (labels can be added after the fact via gh pr edit).
+if ! gh pr create \
+        --base develop \
+        --head "${BRANCH}" \
+        --title "$title" \
+        --body "$body" \
+        --label "$labels"; then
+    echo "::warning::PR create with labels failed; retrying without labels."
+    if ! gh pr create \
+            --base develop \
+            --head "${BRANCH}" \
+            --title "$title" \
+            --body "$body"; then
+        echo "::error::Failed to open PR even without labels. The branch may already have an open PR."
         exit 1
-    }
+    fi
+    # PR opened sans labels — try to add them individually so a single missing
+    # label doesn't tank the rest.
+    pr_number=$(gh pr list --head "${BRANCH}" --json number --jq '.[0].number')
+    if [ -n "$pr_number" ]; then
+        for label in ${labels//,/ }; do
+            gh pr edit "$pr_number" --add-label "$label" 2>/dev/null \
+                || echo "::warning::could not add label '$label' to PR #$pr_number"
+        done
+    fi
+fi
 
 echo "✅ PR opened against develop from ${BRANCH}"
