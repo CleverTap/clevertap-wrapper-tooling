@@ -49,6 +49,74 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
 
 8. **Defer (do NOT apply) any change that requires JS API design** — these are cases where the triage tree branches to "use backfill-missing-coverage". Note them in the structured log under `deferred` with a clear rationale.
 
+## Cross-platform coordination — important
+
+The sync workflow runs **Sync Android FIRST**, then **Sync iOS** (sequential, not parallel). They share the runner's filesystem. If Sync Android added a method to the JS layer, that file ALREADY contains the method when Sync iOS runs.
+
+**Your job is the bridge for YOUR platform**, regardless of JS-layer state:
+
+- Sync Android adds: Android `CleverTapModuleImpl` + both arch shims + JS wrapper + TS spec/types + CHANGELOG.
+- Sync iOS adds: iOS `RCT_EXPORT_METHOD` in `CleverTapReact.mm` + CHANGELOG.
+- BOTH may write to the JS wrapper / TS spec — that's fine; the second sync sees the edit already exists and is a no-op for those files.
+
+For every method in YOUR platform's diff, even if `src/index.js` already exports it (because the other Sync just added it), **ensure your platform's bridge code is present**. Concretely:
+
+- **iOS (you):** open `ios/CleverTapReact/CleverTapReact.mm`. For each ADDED method in the iOS diff, confirm there's a matching `RCT_EXPORT_METHOD(<name> ...)` block. If missing, ADD it. Then surface that method in your structured log (even if the JS wrapper was added by a previous sync).
+- **Android (you):** open `android/src/main/java/com/clevertap/react/CleverTapModuleImpl.java` AND both arch shims. For each ADDED method in the Android diff, confirm there's a matching public method on the impl AND `@ReactMethod` / `override` declarations on the two shims. If missing, add them.
+
+**Do not conclude "nothing to do" just because the JS layer already has the method. The JS wrapper alone is not a complete bridge — the per-platform implementation must exist on YOUR side.**
+
+## Handling native method overloads
+
+Native SDKs sometimes ship method overloads, e.g.:
+
+- Android: `foo()` and `foo(SomeCallback)`
+- iOS: `foo` and `fooWithCallback:`
+
+JS has no method overloading. The established pattern in this codebase: **one JS method with an optional callback parameter.** The bridge null-checks the callback and routes to the right native overload.
+
+Reference implementation (Android):
+
+```java
+public void fetchInbox(Callback callback) {
+    CleverTapAPI cleverTap = getCleverTapAPI();
+    if (cleverTap == null) {
+        Log.e(TAG, ErrorMessages.CLEVERTAP_NOT_INITIALIZED);
+        return;
+    }
+    if (callback == null) {
+        cleverTap.fetchInbox();
+    } else {
+        cleverTap.fetchInbox((FetchInboxCallback) success ->
+            callback.invoke(null, success));
+    }
+}
+```
+
+Reference implementation (iOS .mm):
+
+```objective-c
+RCT_EXPORT_METHOD(fetchInbox:(RCTResponseSenderBlock)callback) {
+    if (callback == NULL) {
+        [[CleverTap sharedInstance] fetchInbox];
+    } else {
+        [[CleverTap sharedInstance] fetchInboxWithCallback:^(BOOL success) {
+            callback(@[[NSNull null], @(success)]);
+        }];
+    }
+}
+```
+
+JS surface: `CleverTap.fetchInbox(callback?)` — host apps call it with or without a callback. Same shape on both platforms.
+
+**Surface BOTH overloads under a single JS method with optional callback.** Don't defer the callback overload citing "needs JS API design" — the pattern is established and the (error, value) Node-style callback shape is derivable from the native callback's argument type.
+
+When you encounter an overload pair in the diff, BOTH go in your `surfaced` list, with the rationale "overload pair handled via single JS method with optional callback parameter."
+
+**Defer ONLY when:**
+- The native callback delivers a custom struct/object with multiple fields whose meaning isn't documented in the native header (genuinely ambiguous JS shape).
+- The native method takes a Builder, configuration object, or other multi-step setup that doesn't fit `(args..., optional callback)`.
+
 ## Constraints — strict
 
 - **Do not ask questions.** Defer ambiguous items instead.
@@ -56,6 +124,7 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
 - **Do not "improve" surrounding code.** Touch only files the recipe requires.
 - **Do not commit or push.** The wrapping CI handles git. You only modify the working tree.
 - **Cost-aware:** keep token usage reasonable. If you find yourself reading dozens of files, stop and emit what you have.
+- **Defer judiciously.** Defer ONLY when the JS API shape is genuinely ambiguous — complex struct callbacks with undocumented fields, builder patterns, multi-method interaction patterns. Do NOT defer cases where the decision tree gives a concrete answer (overloads → optional callback; async with completion handler → Promise<T> or optional callback). Defer is a fallback for genuinely hard cases, not a default for "this looks a bit different."
 
 ## Output — required
 
