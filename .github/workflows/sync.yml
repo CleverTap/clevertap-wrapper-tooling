@@ -191,6 +191,26 @@ jobs:
           }
           EOF
 
+      # The Example app's iOS Podfile uses :modular_headers => true on
+      # CleverTap-iOS-SDK and CTNotificationService directly, but those Swift
+      # pods transitively pull in SDWebImage (an Obj-C pod) which also needs
+      # modular headers when imported from Swift. CocoaPods itself recommends
+      # `use_modular_headers!` globally — we inject it after the `platform`
+      # line if it's not already there. Keeps the repo's Podfile untouched.
+      - name: Patch Podfile (use_modular_headers!)
+        if: inputs.ios_version != ''
+        run: |
+          cd wrapper/Example/ios
+          if grep -q "^use_modular_headers!" Podfile; then
+            echo "Podfile already has use_modular_headers!; no patch needed."
+          else
+            awk '/^platform :ios/ { print; print "use_modular_headers!"; next } { print }' \
+                Podfile > Podfile.patched
+            mv Podfile.patched Podfile
+            echo "Patched Podfile. First 20 lines now:"
+            head -20 Podfile
+          fi
+
       # ─── PRE-SYNC BUILD GATE ──────────────────────────────────────────────
       # Verifies the build pipeline works on the unchanged wrapper checkout
       # BEFORE we spend Claude tokens on Sync. If pre-sync builds fail, the
