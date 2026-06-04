@@ -684,6 +684,48 @@ def extract_ios_build_manifest(source_root: Path, module: str) -> dict:
 
 # ─── Changelog cross-validation ───
 
+# Matches version headings of the form:
+#   ### Version 8.1.0 (April 17, 2026)
+#   ### [Version 7.6.0](https://github.com/.../tag/7.6.0) (April 17, 2026)
+# Captures the version number in group 1.
+_CHANGELOG_HEADING = re.compile(
+    r"^###\s+\[?Version\s+(\d+\.\d+\.\d+(?:[.\w]*)?)\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def _parse_version(s: str) -> Tuple[int, ...]:
+    """Best-effort semver parse; falls back to leading-int tuple."""
+    parts = re.findall(r"\d+", s)
+    return tuple(int(p) for p in parts) if parts else (0,)
+
+
+def list_changelog_versions(source_root: Path, platform: str, module: str) -> List[str]:
+    """Return every version string that appears as a `### Version X.Y.Z`
+    heading in the per-module CHANGELOG, in the order they appear."""
+    rel = CHANGELOG_PATHS.get((platform, module))
+    if not rel:
+        return []
+    path = source_root / rel
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return [m.group(1) for m in _CHANGELOG_HEADING.finditer(text)]
+
+
+def versions_strictly_between(versions: List[str], old: str, new: str) -> List[str]:
+    """Return entries from `versions` that satisfy old < v < new (semver-ish).
+    Preserves the order they appeared in the input list."""
+    old_t = _parse_version(old)
+    new_t = _parse_version(new)
+    out: List[str] = []
+    for v in versions:
+        vt = _parse_version(v)
+        if old_t < vt < new_t:
+            out.append(v)
+    return out
+
+
 def extract_changelog_entry(source_root: Path, platform: str, module: str, version: str) -> Optional[dict]:
     rel = CHANGELOG_PATHS.get((platform, module))
     if not rel:
@@ -704,6 +746,42 @@ def extract_changelog_entry(source_root: Path, platform: str, module: str, versi
         return {"version": version, "entry": None,
                 "_warning": f"no '### Version {version}' section found in {rel}"}
     return {"version": version, "entry": m.group(0).strip()}
+
+
+def extract_changelog_block(source_root: Path, platform: str, module: str,
+                            old_version: str, new_version: str) -> dict:
+    """Build the full changelog block: target version's entry + every
+    intermediate version's entry (strictly between old and new).
+
+    Returns:
+        {
+            "target_version": "<new>",
+            "target_entry": "<text or None>",
+            "intermediate_entries": [
+                {"version": "<v>", "entry": "<text>"},
+                ...
+            ]
+        }
+
+    The CHANGELOG file in the NEW version's source typically contains
+    historical entries for past versions too, so we read that one file
+    and pull out each version's section.
+    """
+    target = extract_changelog_entry(source_root, platform, module, new_version)
+    all_versions = list_changelog_versions(source_root, platform, module)
+    intermediates_versions = versions_strictly_between(all_versions, old_version, new_version)
+
+    intermediates: List[dict] = []
+    for v in intermediates_versions:
+        entry = extract_changelog_entry(source_root, platform, module, v)
+        if entry and entry.get("entry"):
+            intermediates.append({"version": v, "entry": entry["entry"]})
+
+    return {
+        "target_version": new_version,
+        "target_entry": target.get("entry") if target else None,
+        "intermediate_entries": intermediates,
+    }
 
 
 # ─── Build-manifest diff ───
@@ -895,21 +973,39 @@ def _render_markdown(payload: dict) -> str:
         lines.append("")
         _render_build_section(lines, build, meta["platform"])
 
-    # Changelog cross-validation panel
+    # Changelog cross-validation panel — target entry first, then any
+    # intermediate version entries (versions strictly between old and new).
     changelog = payload.get("changelog")
     if changelog:
-        lines.append(f"## Changelog entry for {changelog.get('version', meta['new_version'])}")
+        target_version = changelog.get("target_version", meta["new_version"])
+        target_entry = changelog.get("target_entry")
+        intermediates = changelog.get("intermediate_entries", []) or []
+
+        lines.append(f"## Changelog — target version {target_version}")
         lines.append("")
-        entry = changelog.get("entry")
-        warning = changelog.get("_warning")
-        if warning:
-            lines.append(f"_Warning: {warning}_")
-            lines.append("")
-        if entry:
+        if target_entry:
             lines.append("```markdown")
-            lines.append(entry)
+            lines.append(target_entry)
             lines.append("```")
             lines.append("")
+        else:
+            lines.append(f"_No entry found for {target_version} in the CHANGELOG._")
+            lines.append("")
+
+        if intermediates:
+            lines.append(f"## Changelog — intermediate versions ({len(intermediates)})")
+            lines.append("")
+            lines.append("Versions that exist strictly between the old pin and the target.")
+            lines.append("Their changelogs are surfaced so reviewers see the full release narrative")
+            lines.append("for a version-skipping sync.")
+            lines.append("")
+            for item in intermediates:
+                lines.append(f"### Intermediate: {item['version']}")
+                lines.append("")
+                lines.append("```markdown")
+                lines.append(item["entry"])
+                lines.append("```")
+                lines.append("")
 
     return "\n".join(lines)
 
@@ -1093,9 +1189,16 @@ def main() -> int:
         new_build = extract_ios_build_manifest(new_src, args.module)
         build_diff = {"android": None, "ios": compute_build_diff("ios", old_build, new_build)}
 
-    # Changelog cross-validation panel (read from the new version's source tree)
-    print(f"[diff] reading changelog entry for {args.new_version}", file=sys.stderr)
-    changelog = extract_changelog_entry(new_src, args.platform, args.module, args.new_version)
+    # Changelog cross-validation panel — target version's entry PLUS any
+    # intermediate version entries (versions strictly between old and new).
+    # This way a 8.1.0 → 8.3.0 sync still surfaces what 8.2.0 said.
+    print(f"[diff] reading changelog entries for {args.old_version} → {args.new_version}", file=sys.stderr)
+    changelog = extract_changelog_block(
+        new_src, args.platform, args.module, args.old_version, args.new_version
+    )
+    if changelog.get("intermediate_entries"):
+        intermediates = ", ".join(e["version"] for e in changelog["intermediate_entries"])
+        print(f"[diff]   intermediate entries included: {intermediates}", file=sys.stderr)
 
     meta = {
         "platform": args.platform,
@@ -1124,7 +1227,8 @@ def main() -> int:
         if v and (not isinstance(v, dict) or v)
     )
     print(f"[diff] api: {api_summary}; build: {build_changes} categories with changes; "
-          f"changelog: {'present' if (changelog and changelog.get('entry')) else 'missing'}")
+          f"changelog: {'present' if (changelog and changelog.get('target_entry')) else 'missing'}"
+          f"{' + ' + str(len(changelog.get('intermediate_entries', []))) + ' intermediate' if changelog and changelog.get('intermediate_entries') else ''}")
     return 0
 
 

@@ -46,6 +46,36 @@ A single Markdown document, written to stdout. The CI captures it and uses it as
 
 <the platform-tagged lines added to ## [Unreleased]>
 
+### Native CHANGELOG entries (reviewer reference)
+
+The native SDK team's release notes for the version(s) being synced. For
+single-version bumps this is just the target version's entry. When the
+wrapper's pin skipped versions (e.g., pin was 8.1.0 and we're syncing to
+8.3.0), intermediate versions' entries are included too so the reviewer
+sees the full release narrative without leaving the PR.
+
+Pull these out of `claude-output-<platform>.json` → `result` → the
+inner `native_changelogs` field. Render in this shape:
+
+```markdown
+#### Android — corev<target_version>
+
+<verbatim text of native_changelogs.target_entry>
+
+#### Android — intermediate corev<v1>  (only if intermediate_entries is non-empty)
+
+<verbatim text of that entry>
+
+#### Android — intermediate corev<v2>
+
+<verbatim text of that entry>
+```
+
+Repeat the section for iOS with `7.X.X` headings.
+
+If `native_changelogs` is missing from the sync output (older
+orchestrator format), skip this whole section — don't render a stub.
+
 ### Run metadata
 
 - Model: <from claude output>

@@ -29,6 +29,20 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
 
    Read the resulting `diff.json` from `~/.cache/clevertap-sdk-diff/${PLATFORM}-${MODULE}-<old>-to-${NEW_VERSION}/diff.json`. This is your ground truth.
 
+   The diff's `changelog` block has the shape:
+
+   ```json
+   "changelog": {
+     "target_version": "8.3.0",
+     "target_entry": "### Version 8.3.0 ...",
+     "intermediate_entries": [
+       {"version": "8.2.0", "entry": "### Version 8.2.0 ..."}
+     ]
+   }
+   ```
+
+   When the wrapper's current pin skipped versions (e.g., 8.1.0 pin and you're syncing to 8.3.0), `intermediate_entries` lists every version strictly between. Their changelog narrative is part of the cumulative diff you're applying — read them as sanity-check input too. If an intermediate version's changelog announced a deprecation or breaking change that's not visible in the structural diff (e.g., "behaviour of foo() changed silently"), call it out in your `skipped` rationale or escalate by including a `notes` field in your structured output.
+
 3. **Walk the triage tree** from the skill's `refs/triage-decision-tree.md` for every API diff entry (added/removed/changed) and every build-manifest delta.
 
 4. **Apply each "surface" decision** by following the recipe in the `clevertap-react-native-add-public-method` skill: TS spec → JS wrapper → TS types → Android Impl + both arch shims → iOS RCT_EXPORT_METHOD → Example app → docs.
@@ -149,10 +163,19 @@ At the end, write a structured JSON log to stdout (CI captures it to `claude-out
     {"change": "minSdk 21->23", "files": ["android/build.gradle"]}
   ],
   "changelog_entry": "- [Android] Bump clevertap-android-sdk to ${NEW_VERSION} — ...",
+  "native_changelogs": {
+    "target_version": "${NEW_VERSION}",
+    "target_entry": "<paste the diff.json's target_entry verbatim>",
+    "intermediate_entries": [
+      {"version": "<v>", "entry": "<paste the diff.json's intermediate entry verbatim>"}
+    ]
+  },
   "tokens_used": <integer>,
   "cost_usd_estimate": <float>
 }
 ```
+
+**`native_changelogs` is required.** Copy the diff.json's `changelog` block VERBATIM into this field. It lets the PR-description generator render the full native release narrative — target version's entry plus every intermediate version's entry (when this sync spans more than one native release). For a single-version bump, `intermediate_entries` is an empty array.
 
 If anything fundamentally went wrong (e.g., diff tool failed, pin file not found), still emit valid JSON with an `error` field describing what happened — let the CI handle it cleanly rather than crashing.
 
