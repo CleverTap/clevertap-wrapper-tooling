@@ -458,3 +458,26 @@ jobs:
             claude-output-android.json
             claude-output-ios.json
           if-no-files-found: ignore
+
+      # ─── Upload post-sync build artifacts ─────────────────────────────────
+      # APK / .app from the post-sync build (i.e., the artifact that reflects
+      # Claude's edits). Skipped when skip_sync=true (the pre-sync APK is
+      # baseline-only — not interesting to ship). Uploaded even when the
+      # post-sync build failed, so the maintainer can inspect partial output.
+      # `.app` is for iOS simulator — real `.ipa` requires device signing
+      # which is intentionally not set up.
+      - name: Upload Android APK (post-sync)
+        if: always() && !inputs.skip_sync && inputs.android_version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-android-apk-post-sync
+          path: wrapper/Example/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+
+      - name: Upload iOS .app (post-sync)
+        if: always() && !inputs.skip_sync && inputs.ios_version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-ios-app-post-sync
+          path: wrapper/Example/ios/build/Build/Products/Debug-iphonesimulator/Example.app
+          if-no-files-found: ignore
