@@ -77,17 +77,18 @@ fi
 # — idempotent. Without this, `gh pr create --label X` fails if X doesn't
 # exist on the repo (common for fresh forks). Colors are GitHub's standard
 # hex (without #).
-declare -A LABEL_COLORS=(
-    [auto-generated]="ededed"   # neutral gray
-    [bug-fix-only]="0e8a16"     # green
-    [new-api]="1d76db"          # blue
-    [breaking-change]="b60205"  # red
-    [build-failed]="d93f0b"     # orange-red
-)
-for label in "${!LABEL_COLORS[@]}"; do
-    color="${LABEL_COLORS[$label]}"
-    gh label create "$label" --color "$color" --force 2>/dev/null \
-        || echo "::warning::could not ensure label '$label' (may be a permissions issue; continuing)"
+#
+# Parallel arrays (not associative arrays) on purpose: bash with `set -u`
+# treats keys containing `-` as parameter expansion (e.g.
+# ${arr[auto-generated]} → looks for $auto and bails). Integer indices
+# don't have that problem.
+LABEL_NAMES=(auto-generated bug-fix-only new-api breaking-change build-failed)
+LABEL_COLORS=(ededed         0e8a16       1d76db  b60205          d93f0b)
+for i in "${!LABEL_NAMES[@]}"; do
+    name="${LABEL_NAMES[$i]}"
+    color="${LABEL_COLORS[$i]}"
+    gh label create "$name" --color "$color" --force 2>/dev/null \
+        || echo "::warning::could not ensure label '$name' (may be a permissions issue; continuing)"
 done
 
 # Open the PR. If --label fails, retry without labels so we at least get
