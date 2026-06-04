@@ -191,24 +191,46 @@ jobs:
           }
           EOF
 
-      # The Example app's iOS Podfile uses :modular_headers => true on
+      # The Example app's iOS Podfile sets :modular_headers => true on
       # CleverTap-iOS-SDK and CTNotificationService directly, but those Swift
-      # pods transitively pull in SDWebImage (an Obj-C pod) which also needs
-      # modular headers when imported from Swift. CocoaPods itself recommends
-      # `use_modular_headers!` globally — we inject it after the `platform`
-      # line if it's not already there. Keeps the repo's Podfile untouched.
-      - name: Patch Podfile (use_modular_headers!)
+      # pods transitively pull in SDWebImage (an Obj-C pod) which ALSO needs
+      # modular headers when imported from Swift.
+      #
+      # First attempt was `use_modular_headers!` globally — too aggressive,
+      # caused "redefinition of module 'ReactCommon'" because RN's internal
+      # pods already define their own modules.
+      #
+      # This patch is surgical: inject `pod "SDWebImage", :modular_headers
+      # => true` inside each `target 'X' do ... end` block (just before the
+      # closing `end`). The `def ... end` helper block is left alone via
+      # state tracking, so the helper isn't polluted.
+      #
+      # awk state vars:
+      #   in_def    — true inside a `def NAME ... end` block
+      #   in_target — true inside a `target 'X' do ... end` block
+      # Injection happens only when leaving a `target` block, never a `def`.
+      - name: Patch Podfile (per-target SDWebImage modular_headers)
         if: inputs.ios_version != ''
         run: |
           cd wrapper/Example/ios
-          if grep -q "^use_modular_headers!" Podfile; then
-            echo "Podfile already has use_modular_headers!; no patch needed."
+          if grep -q 'pod "SDWebImage", :modular_headers' Podfile; then
+            echo "Podfile already declares SDWebImage modular_headers; no patch needed."
           else
-            awk '/^platform :ios/ { print; print "use_modular_headers!"; next } { print }' \
-                Podfile > Podfile.patched
+            awk '
+              /^def [a-zA-Z_]+/ { in_def = 1 }
+              in_def && /^end$/ { in_def = 0; print; next }
+              /^target '\''[^'\'']+'\'' do/ { in_target = 1; print; next }
+              in_target && /^end$/ {
+                  print "  pod \"SDWebImage\", :modular_headers => true"
+                  print
+                  in_target = 0
+                  next
+              }
+              { print }
+            ' Podfile > Podfile.patched
             mv Podfile.patched Podfile
-            echo "Patched Podfile. First 20 lines now:"
-            head -20 Podfile
+            echo "Patched Podfile. Lines added:"
+            grep -n "SDWebImage" Podfile
           fi
 
       # ─── PRE-SYNC BUILD GATE ──────────────────────────────────────────────
