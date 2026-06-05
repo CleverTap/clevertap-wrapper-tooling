@@ -99,6 +99,12 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "branch=task/release_${name}" >> "$GITHUB_OUTPUT"
 
+      - name: Compute release date (human-readable, for CHANGELOG heading)
+        id: release_date
+        run: |
+          # Produces "June 5 2026"-style output to match existing CHANGELOG style.
+          echo "value=$(date -u '+%B %-d %Y')" >> "$GITHUB_OUTPUT"
+
       - name: Mint GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -279,6 +285,7 @@ jobs:
           MODULE: ${{ inputs.android_module }}
           NEW_VERSION: ${{ inputs.android_version }}
           DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
+          RELEASE_DATE: ${{ steps.release_date.outputs.value }}
         run: |
           set -x
           which claude
@@ -337,6 +344,7 @@ jobs:
           MODULE: ${{ inputs.ios_module }}
           NEW_VERSION: ${{ inputs.ios_version }}
           DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
+          RELEASE_DATE: ${{ steps.release_date.outputs.value }}
         run: |
           # Same allowlist rationale as Sync Android — see comments there.
           ALLOWED_TOOLS="Read,Edit,Write,Glob,Grep,Bash(python3 ${{ github.workspace }}/tooling/tools/diff_native_api.py:*),Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"

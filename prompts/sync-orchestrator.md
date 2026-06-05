@@ -9,6 +9,7 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
 - **New version:** ${NEW_VERSION}
 - **Old version:** read from the wrapper repo's current pin (`clevertap-react-native.podspec` for iOS / `android/build.gradle` for Android).
 - **Diff tool path:** ${DIFF_TOOL_PATH}
+- **Release date:** ${RELEASE_DATE} — human-readable date (e.g. "June 5 2026") used as the CHANGELOG heading date.
 
 ## What to do
 
@@ -52,16 +53,93 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
    - If iOS deployment target moved, update `clevertap-react-native.podspec`'s `s.platform`.
    - If new permissions appeared on Android, declare them in `android/src/main/AndroidManifest.xml` if always-required.
    - If new pod deps appeared on iOS, add to `clevertap-react-native.podspec` if needed (rare).
+   - **Propagate to `docs/install.md`.** If you bumped the Android pin in `android/build.gradle`, also update the matching `implementation 'com.clevertap.android:clevertap-android-sdk:<old>'` line inside a sample `dependencies { }` block in `docs/install.md`. Same for iOS deployment-target / minSdk bumps if `docs/install.md` quotes those numbers. Add `docs/install.md` to your `docs_updated` output field.
 
 6. **Bump the version pin** in the wrapper for this platform/module.
 
-7. **Update `CHANGELOG.md`** with a platform-tagged line at the top of the `## [Unreleased]` section:
+7. **Bump the wrapper's own SemVer.** The wrapper has its own version independent of the native SDK. Pick a bump type:
+   - **Patch** (e.g. 4.1.0 → 4.1.1): no diff entries crossed the triage tree; tooling-only correction.
+   - **Minor** (e.g. 4.1.0 → 4.2.0): the common case — you surfaced one or more additive APIs and/or build-manifest tweaks that don't break existing callers.
+   - **Major** (e.g. 4.1.0 → 5.0.0): any of:
+     - a `REMOVED` row applied (you deleted a public RN method);
+     - a `CHANGED` row that added a REQUIRED parameter;
+     - native bumped `minSdk` or iOS `s.platform` and you propagated it;
+     - native CHANGELOG announced a host-impacting breaking change (default flipped, behavior change, etc.).
+
+   Read the current wrapper version from `package.json` `"version"`. Then edit THREE files in lockstep with the NEW wrapper version:
+   - `package.json`: replace the `"version"` value.
+   - `android/build.gradle`: replace `versionName "<old>"` with the new string; bump `versionCode` by `+10` for a minor bump, `+100` for major, `+1` for patch. The cadence already in use is 4.0.0→400, 4.1.0→410, 4.2.0→420.
+   - `src/index.js`: replace `const libVersion = <NNNNN>` with `MAJOR*10000 + MINOR*100 + PATCH` (4.2.0 → 40200).
+
+   Emit your decision in the structured output's `wrapper_version` field (see schema).
+
+   Note: when Sync Android runs first, it does this bump; when Sync iOS runs second, the bump is already there — verify and re-emit the same `wrapper_version` decision (don't bump twice).
+
+8. **Update `CHANGELOG.md` — versioned block format.** Do NOT write to `## [Unreleased]`. The project uses versioned blocks at the top of the file. Read existing entries (lines 8-30 for v4.1.0, 31-44 for v4.0.0) to match the exact style. Insert the new block ABOVE the most recent existing version block, following this template:
+
    ```
-   - [Android] Bump clevertap-android-sdk to <new> — <short summary>
-   - [iOS] Bump CleverTap-iOS-SDK to <new> — <short summary>
+   Version <NEW_WRAPPER_VERSION> *(${RELEASE_DATE})*
+   -------------------------------------------
+   **What's new**
+   * **[Android Platform]**
+     * Supports [CleverTap Android SDK v<ANDROID_NEW>](https://github.com/CleverTap/clevertap-android-sdk/blob/master/docs/CTCORECHANGELOG.md#version-<MAJOR><MINOR><PATCH>-<month>-<year>).
+     * <user-visible feature bullet>
+
+   * **[iOS Platform]**
+     * Supports [CleverTap iOS SDK v<IOS_NEW>](https://github.com/CleverTap/clevertap-ios-sdk/blob/master/CHANGELOG.md#version-<MAJOR><MINOR><PATCH>-<month>-<day>-<year>).
+     * <user-visible feature bullet>
+
+   **API changes**  (omit this section if there are none)
+   * **[Android and iOS Platform]**  (or one-platform-only if applicable)
+     * Adds `<methodName>(<args>)` — <one-line purpose>.
+
+   **Breaking Changes**  (omit if none)
+   * **[Android Platform]**
+     * <breaking change>
    ```
 
-8. **Defer (do NOT apply) any change that requires JS API design** — these are cases where the triage tree branches to "use backfill-missing-coverage". Note them in the structured log under `deferred` with a clear rationale.
+   Rules for the bullets:
+
+   - **Symmetrize across platforms.** If a feature appears in BOTH native diffs (e.g. App Inbox Cross-Device Sync, which lands in both Android 8.2.0 and iOS 7.7.0), call it out under BOTH platforms with the same headline. Don't list it under just one.
+   - **Platform-asymmetric features** (e.g. iOS-only silent-in-foreground push) go under that platform only.
+   - **Headline first, detail in parenthetical.** Example: "App Inbox Cross-Device Sync — inbox state (read, deleted) syncs across a user's devices automatically. Includes a pull-to-refresh gesture in the built-in App Inbox view, throttled to once every 5 minutes."
+   - **Translate native jargon into host-app terms.** Pull facts from `native_changelogs.target_entry` and `native_changelogs.intermediate_entries`, but rewrite for a JS host-app reader. Don't paste verbatim.
+
+   If a `## [Unreleased]` heading exists in the file from a prior partial run, delete it once your versioned block is in place.
+
+9. **Document each surfaced API in `docs/usage.md`.** For every entry in your `surfaced` list, append a new `#### <Title Case Name>` block inside the matching `## H2` section. Use these heuristics to pick the section:
+
+   - methods with "Inbox" in the name → `## App Inbox`
+   - methods with "DisplayUnit" in the name → `## Native Display`
+   - methods with "Profile" / "User" in the name → `## User Profiles`
+   - methods with "Event" in the name → `## User Events`
+   - methods with "FeatureFlag" → `## Feature Flag`
+   - methods with "ProductConfig" → `## Product Config`
+
+   If you can't confidently place an entry, note it in `deferred` instead of guessing.
+
+   Style mirrors existing usage.md entries:
+
+   ```
+   #### <Title Case Name>
+
+   *Available from CleverTap React Native SDK v<NEW_WRAPPER_VERSION>.*
+
+   <One-paragraph plain-English description. NO internals like "fires on JS
+   thread", "background dispatch queue", or native-class-name leaks. For
+   callback-receiving methods, explain what the callback value is and when
+   it's invoked.>
+
+   ```javascript
+   CleverTap.<methodName>(<realistic, concrete values>);
+   ```
+   ```
+
+   The example MUST use concrete realistic values — never placeholders like `'Unit Id'` or `{key: 'value'}`. For methods that take a property bag, demonstrate mixed types (string, number, bool) so the reader sees what's serializable.
+
+   Add `docs/usage.md` to `docs_updated`.
+
+10. **Defer (do NOT apply) any change that requires JS API design** — these are cases where the triage tree branches to "use backfill-missing-coverage". Note them in the structured log under `deferred` with a clear rationale.
 
 ## Cross-platform coordination — important
 
@@ -163,6 +241,13 @@ At the end, write a structured JSON log to stdout (CI captures it to `claude-out
     {"change": "minSdk 21->23", "files": ["android/build.gradle"]}
   ],
   "changelog_entry": "- [Android] Bump clevertap-android-sdk to ${NEW_VERSION} — ...",
+  "wrapper_version": {
+    "from": "4.1.0",
+    "to": "4.2.0",
+    "bump_type": "minor",
+    "rationale": "Adds fetchInbox(callback?) and pushDisplayUnitElementClickedEventForID; no breaking changes."
+  },
+  "docs_updated": ["docs/usage.md", "docs/install.md"],
   "native_changelogs": {
     "target_version": "${NEW_VERSION}",
     "target_entry": "<paste the diff.json's target_entry verbatim>",

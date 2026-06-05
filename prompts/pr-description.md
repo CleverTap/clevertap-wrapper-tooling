@@ -24,6 +24,16 @@ A single Markdown document, written to stdout. The CI captures it and uses it as
 
 <list each pin that changed; one line per platform>
 
+### Release prep
+
+Pull these from either platform's claude-output JSON `wrapper_version` and `docs_updated` fields (both platforms emit the same values). If either field is missing from BOTH outputs (older v1 tag), skip this whole section — don't render placeholders.
+
+- **Wrapper version:** <wrapper_version.from> → <wrapper_version.to> (<wrapper_version.bump_type> — <wrapper_version.rationale>)
+- **libVersion** (src/index.js): integer form, e.g. 40100 → 40200 (compute from `to`: MAJOR*10000 + MINOR*100 + PATCH).
+- **Docs updated:**
+    <one bullet per entry in docs_updated, e.g. `\`docs/usage.md\` — entries added for: fetchInbox, pushDisplayUnitElementClickedEventForID`>
+    <e.g. `\`docs/install.md\` — Android pin bumped to 8.3.0`>
+
 ### Android sync (skip this section if Android wasn't synced)
 
 #### Surfaced (N)
