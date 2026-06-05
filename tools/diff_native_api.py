@@ -272,6 +272,33 @@ _RESTRICTION_ANNOTATION = re.compile(
     r"@(RestrictTo|Hide|Internal|VisibleForTesting)\b"
 )
 
+# Identifier inside a `backtick-quoted` changelog snippet, followed by `(` (Java/Kotlin
+# method call) or `:` (Obj-C selector). Lowercase-first to filter out class names.
+_CHANGELOG_METHOD_CALL = re.compile(r"^\s*([a-z][a-zA-Z0-9_]*)\s*\(")
+_CHANGELOG_OBJC_SELECTOR = re.compile(r"^\s*([a-z][a-zA-Z0-9_]*)\s*:")
+
+
+def _extract_method_names_from_changelog(text: str) -> Set[str]:
+    """Find method names backtick-quoted in changelog prose.
+
+    Used as a defensive cross-check against the structural diff: if the
+    changelog explicitly names a method that the structural diff missed
+    (regex parser failed, declaration wrapped unusually, etc.), surface
+    it so the orchestrator sees the gap.
+    """
+    names: Set[str] = set()
+    if not text:
+        return names
+    for backticked in re.findall(r"`([^`]+)`", text):
+        m = _CHANGELOG_METHOD_CALL.match(backticked)
+        if m:
+            names.add(m.group(1))
+            continue
+        m = _CHANGELOG_OBJC_SELECTOR.match(backticked)
+        if m:
+            names.add(m.group(1))
+    return names
+
 # Objective-C method declaration: `- (returnType)selector:(paramType)param ...` ending in `;`.
 _OBJC_METHOD = re.compile(
     r"^\s*([+\-])\s*"              # kind: + class method, - instance method
@@ -322,41 +349,64 @@ def _is_restricted(prev_lines: List[str]) -> bool:
     return False
 
 
+def _stitch_until_parens_balance(lines: List[str], start: int, max_lookahead: int = 5) -> Tuple[str, int]:
+    """Join continuation lines until the open-paren count balances.
+
+    Returns (joined_text, last_index_consumed). Methods with long generic
+    parameter types like HashMap<String, Object> often wrap across multiple
+    lines in Java source — the line-based regexes miss these unless we
+    stitch them back together first.
+    """
+    joined = lines[start]
+    depth = joined.count("(") - joined.count(")")
+    j = start
+    while depth > 0 and j + 1 < len(lines) and (j - start) < max_lookahead:
+        j += 1
+        joined += " " + lines[j].strip()
+        depth = joined.count("(") - joined.count(")")
+    return joined, j
+
+
 def _extract_java(text: str, rel: str, surface: Surface) -> None:
     lines = text.splitlines()
-    for i, line in enumerate(lines):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         # Quick reject before regex
         if "public" not in line:
+            i += 1
             continue
-        m = _JAVA_PUBLIC_METHOD.match(line)
-        if not m:
-            continue
-        return_type, name, params = m.group(1), m.group(2), m.group(3)
-        # Skip ctors (return type == class name pattern) — best-effort
-        if return_type.strip() in ("", name):
-            continue
-        if _is_restricted(lines[max(0, i - 5):i]):
-            continue
-        sig = _normalize_signature(params, return_type)
-        surface.add(Symbol(file=rel, kind="method", name=name, signature=sig))
+        joined, j = _stitch_until_parens_balance(lines, i)
+        m = _JAVA_PUBLIC_METHOD.match(joined)
+        if m:
+            return_type, name, params = m.group(1), m.group(2), m.group(3)
+            # Skip ctors (return type == class name pattern) — best-effort
+            if return_type.strip() not in ("", name) and not _is_restricted(lines[max(0, i - 5):i]):
+                sig = _normalize_signature(params, return_type)
+                surface.add(Symbol(file=rel, kind="method", name=name, signature=sig))
+        i = j + 1
 
 
 def _extract_kotlin(text: str, rel: str, surface: Surface) -> None:
     lines = text.splitlines()
-    for i, line in enumerate(lines):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         if "fun " not in line:
+            i += 1
             continue
         # Skip if the line is a private/internal declaration
         if re.search(r"\b(private|internal)\s+fun\b", line):
+            i += 1
             continue
-        m = _KOTLIN_PUBLIC_FUN.match(line)
-        if not m:
-            continue
-        name, params, ret = m.group(1), m.group(2), m.group(3) or "Unit"
-        if _is_restricted(lines[max(0, i - 5):i]):
-            continue
-        sig = _normalize_signature(params, ret)
-        surface.add(Symbol(file=rel, kind="method", name=name, signature=sig))
+        joined, j = _stitch_until_parens_balance(lines, i)
+        m = _KOTLIN_PUBLIC_FUN.match(joined)
+        if m:
+            name, params, ret = m.group(1), m.group(2), m.group(3) or "Unit"
+            if not _is_restricted(lines[max(0, i - 5):i]):
+                sig = _normalize_signature(params, ret)
+                surface.add(Symbol(file=rel, kind="method", name=name, signature=sig))
+        i = j + 1
 
 
 def _extract_objc_header(text: str, rel: str, surface: Surface) -> None:
@@ -1212,7 +1262,28 @@ def main() -> int:
         "new_source_path": str(new_src),
     }
 
-    payload_extras = {"build": build_diff, "changelog": changelog}
+    # Defensive cross-check: scan the target + intermediate changelog text
+    # for backtick-quoted method names that didn't appear in the structural
+    # diff (and aren't already known from the old surface either). Surfaces
+    # diff-tool parser misses.
+    _changelog_text = changelog.get("target_entry", "") or ""
+    for _inter in changelog.get("intermediate_entries", []):
+        _changelog_text += "\n" + (_inter.get("entry", "") or "")
+    _changelog_mentioned = _extract_method_names_from_changelog(_changelog_text)
+    _all_known_names = new_surface.names() | old_surface.names()
+    changelog_only_methods = sorted(_changelog_mentioned - _all_known_names)
+    if changelog_only_methods:
+        print(
+            f"[diff]   ⚠️ changelog mentions methods missing from structural diff: "
+            f"{', '.join(changelog_only_methods)}",
+            file=sys.stderr,
+        )
+
+    payload_extras = {
+        "build": build_diff,
+        "changelog": changelog,
+        "changelog_only_methods": changelog_only_methods,
+    }
 
     pair = f"{args.platform}-{args.module}-{args.old_version}-to-{args.new_version}"
     target_dir = args.out_dir / pair
