@@ -1,0 +1,83 @@
+name: 'Claude sync (one platform)'
+description: >
+  Wrapper-agnostic headless Claude invocation for one platform. Renders the
+  given orchestrator prompt with envsubst, runs `claude -p` with an explicit
+  tool allowlist, captures the structured JSON to the output file, and prints a
+  summary. The wrapper-specific prompt path and allowlist are passed in by the
+  conductor. Fails the step (non-zero) if Claude errors, so the caller can skip
+  the PR.
+
+inputs:
+  platform:
+    description: 'android or ios.'
+    required: true
+  module:
+    description: 'core / pushtemplates / hms.'
+    required: true
+  new_version:
+    description: 'Target native version.'
+    required: true
+  prompt_path:
+    description: 'Absolute path to the orchestrator prompt to render with envsubst.'
+    required: true
+  allowed_tools:
+    description: 'Comma-separated --allowed-tools string for the claude CLI.'
+    required: true
+  diff_tool_path:
+    description: 'Absolute path to diff_native_api.py.'
+    required: true
+  release_date:
+    description: 'Human-readable release date for the CHANGELOG heading.'
+    required: true
+  model:
+    description: 'Claude model alias.'
+    required: true
+  anthropic_api_key:
+    description: 'Anthropic API key.'
+    required: true
+  output_file:
+    description: 'Absolute path to write the structured JSON output to.'
+    required: true
+  tooling_root:
+    description: 'Absolute path to the tooling repo checkout.'
+    required: true
+  wrapper_path:
+    description: 'Path under the workspace where the wrapper repo is checked out.'
+    required: false
+    default: 'wrapper'
+
+runs:
+  using: composite
+  steps:
+    - name: Sync ${{ inputs.platform }}
+      working-directory: ${{ inputs.wrapper_path }}
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        PLATFORM: ${{ inputs.platform }}
+        MODULE: ${{ inputs.module }}
+        NEW_VERSION: ${{ inputs.new_version }}
+        DIFF_TOOL_PATH: ${{ inputs.diff_tool_path }}
+        RELEASE_DATE: ${{ inputs.release_date }}
+      run: |
+        prompt="$(envsubst < "${{ inputs.prompt_path }}")"
+        echo "Prompt length: ${#prompt} chars"
+        stderr_log="$(dirname "${{ inputs.output_file }}")/claude-stderr-${{ inputs.platform }}.log"
+        set +e
+        claude -p "$prompt" \
+               --model "${{ inputs.model }}" \
+               --allowed-tools "${{ inputs.allowed_tools }}" \
+               --output-format json \
+               > "${{ inputs.output_file }}" \
+               2> "$stderr_log"
+        rc=$?
+        set -e
+        if [ $rc -ne 0 ]; then
+          echo "::error::claude exited with $rc"
+          echo "::group::stderr"; cat "$stderr_log" || true; echo "::endgroup::"
+          echo "::group::stdout (truncated)"; head -100 "${{ inputs.output_file }}" || true; echo "::endgroup::"
+          exit $rc
+        fi
+        echo "${{ inputs.platform }} sync produced:"
+        python3 "${{ inputs.tooling_root }}/scripts/summarize-claude-output.py" \
+            "${{ inputs.output_file }}" || true

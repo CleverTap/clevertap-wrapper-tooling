@@ -11,6 +11,7 @@
 #   ANDROID_MODULE / ANDROID_VERSION
 #   IOS_MODULE / IOS_VERSION
 #   RELEASE_NAME / BRANCH
+#   WRAPPER            - wrapper name for the PR title (default: wrapper)
 #   MODEL              - Claude model (default sonnet-4-6)
 #   TOOLING_ROOT       - path to the tooling repo checkout (default: $GITHUB_WORKSPACE/tooling)
 
@@ -18,19 +19,20 @@ set -uo pipefail
 
 MODEL="${MODEL:-sonnet-4-6}"
 TOOLING_ROOT="${TOOLING_ROOT:-${GITHUB_WORKSPACE}/tooling}"
+WRAPPER="${WRAPPER:-wrapper}"
 
 # Build PR title
-title="task: sync wrapper with native release ${RELEASE_NAME}"
+title="task: sync ${WRAPPER} with native release ${RELEASE_NAME}"
 if [ -n "${ANDROID_VERSION:-}" ] && [ -n "${IOS_VERSION:-}" ]; then
-    title="task: sync RN ← Android ${ANDROID_MODULE}v${ANDROID_VERSION} + iOS ${IOS_VERSION} (${RELEASE_NAME})"
+    title="task: sync ${WRAPPER} ← Android ${ANDROID_MODULE}v${ANDROID_VERSION} + iOS ${IOS_VERSION} (${RELEASE_NAME})"
 elif [ -n "${ANDROID_VERSION:-}" ]; then
-    title="task: sync RN ← Android ${ANDROID_MODULE}v${ANDROID_VERSION} (${RELEASE_NAME})"
+    title="task: sync ${WRAPPER} ← Android ${ANDROID_MODULE}v${ANDROID_VERSION} (${RELEASE_NAME})"
 elif [ -n "${IOS_VERSION:-}" ]; then
-    title="task: sync RN ← iOS ${IOS_VERSION} (${RELEASE_NAME})"
+    title="task: sync ${WRAPPER} ← iOS ${IOS_VERSION} (${RELEASE_NAME})"
 fi
 
 # Ask Claude to generate the PR body from the structured logs
-export ANDROID_OUTPUT IOS_OUTPUT ANDROID_MODULE ANDROID_VERSION IOS_MODULE IOS_VERSION RELEASE_NAME BRANCH
+export WRAPPER ANDROID_OUTPUT IOS_OUTPUT ANDROID_MODULE ANDROID_VERSION IOS_MODULE IOS_VERSION RELEASE_NAME BRANCH
 
 prompt="$(envsubst < "${TOOLING_ROOT}/prompts/pr-description.md")"
 body=$(claude -p "$prompt" --model "$MODEL")

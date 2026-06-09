@@ -1,0 +1,86 @@
+name: 'Open combined PR'
+description: >
+  Wrapper-agnostic PR opener: asks Claude to render the PR body from the
+  structured sync logs, applies labels (incl. build-failed), and opens the PR
+  via the gh CLI. Thin wrapper around scripts/open-combined-pr.sh.
+
+inputs:
+  gh_token:
+    description: 'GitHub App token.'
+    required: true
+  anthropic_api_key:
+    description: 'Anthropic API key (for the PR-body prompt).'
+    required: true
+  wrapper:
+    description: 'Wrapper name (used in the PR title).'
+    required: true
+  android_module:
+    description: 'Android module that was synced (for the PR title/labels).'
+    required: false
+    default: ''
+  android_version:
+    description: 'Android version that was synced (empty if Android was skipped).'
+    required: false
+    default: ''
+  ios_module:
+    description: 'iOS module that was synced (for the PR title/labels).'
+    required: false
+    default: ''
+  ios_version:
+    description: 'iOS version that was synced (empty if iOS was skipped).'
+    required: false
+    default: ''
+  release_name:
+    description: 'Resolved release name (used in the PR title).'
+    required: true
+  branch:
+    description: 'Feature branch the PR is opened from.'
+    required: true
+  android_output:
+    description: 'Path to claude-output-android.json.'
+    required: true
+  ios_output:
+    description: 'Path to claude-output-ios.json.'
+    required: true
+  android_build_outcome:
+    description: 'Post-sync Android build outcome (success/failure/empty).'
+    required: false
+    default: ''
+  ios_build_outcome:
+    description: 'Post-sync iOS build outcome (success/failure/empty).'
+    required: false
+    default: ''
+  model:
+    description: 'Claude model alias for PR-body generation.'
+    required: true
+  tooling_root:
+    description: 'Absolute path to the tooling repo checkout.'
+    required: true
+  wrapper_path:
+    description: 'Path under the workspace where the wrapper repo is checked out.'
+    required: false
+    default: 'wrapper'
+
+runs:
+  using: composite
+  steps:
+    - name: Open combined PR
+      working-directory: ${{ inputs.wrapper_path }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.gh_token }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        WRAPPER: ${{ inputs.wrapper }}
+        ANDROID_MODULE: ${{ inputs.android_module }}
+        ANDROID_VERSION: ${{ inputs.android_version }}
+        IOS_MODULE: ${{ inputs.ios_module }}
+        IOS_VERSION: ${{ inputs.ios_version }}
+        RELEASE_NAME: ${{ inputs.release_name }}
+        BRANCH: ${{ inputs.branch }}
+        ANDROID_OUTPUT: ${{ inputs.android_output }}
+        IOS_OUTPUT: ${{ inputs.ios_output }}
+        ANDROID_BUILD_OUTCOME: ${{ inputs.android_build_outcome }}
+        IOS_BUILD_OUTCOME: ${{ inputs.ios_build_outcome }}
+        MODEL: ${{ inputs.model }}
+        TOOLING_ROOT: ${{ inputs.tooling_root }}
+      run: bash "${{ inputs.tooling_root }}/scripts/open-combined-pr.sh"

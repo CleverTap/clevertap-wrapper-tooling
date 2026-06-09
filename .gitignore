@@ -35,6 +35,10 @@ clevertap-sdk-diff/
 *.log
 err.log
 
+# GitHub App credentials — NEVER commit these
+github app/
+*.pem
+
 # Env files (no secrets in this repo, but the rule is rule)
 .env
 .env.*

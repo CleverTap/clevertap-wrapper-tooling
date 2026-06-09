@@ -1,22 +1,29 @@
 name: sync-with-native-release
 
-# Reusable workflow that drives the end-to-end native-release → wrapper-PR flow.
+# Reusable workflow that drives the end-to-end native-release -> wrapper-PR flow.
 #
 # Called from each wrapper repo's `.github/workflows/native-release-sync.yml`
 # via `uses: piyush-kukadiya/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1`.
 #
-# Owns: source checkout, branch creation, headless Claude invocation, self-heal
-# loop, lint/build runs, PR opening, cost reporting, Slack notification on failure.
+# This is a thin CONDUCTOR. The reusable, wrapper-agnostic step groups live in
+# composite actions under `.github/actions/`; the wrapper-specific build lives
+# in `.github/actions/build/<wrapper>/`. The conductor wires them together and
+# owns the outcome-based orchestration (when to open the PR, when to fail).
+#
+#   setup ............ token, wrapper checkout, branch, Claude CLI      (shared)
+#   build/<wrapper> .. example-app build, pre- and post-sync           (per wrapper)
+#   claude-sync ...... headless `claude -p` for one platform           (shared)
+#   open-pr .......... PR body + labels + gh pr create                 (shared)
 
 on:
   workflow_call:
     inputs:
       wrapper:
-        description: 'Wrapper name (react-native, flutter, unity, ...). Used to derive the repo: CleverTap/clevertap-<wrapper>.'
+        description: 'Wrapper name (react-native, flutter, ...). Selects the build action, prompt, and tool allowlist.'
         required: true
         type: string
       android_module:
-        description: 'Android module being bumped (core/pushtemplates/hms). Empty string skips Android.'
+        description: 'Android module being bumped (core/pushtemplates/hms). Empty skips Android.'
         required: false
         type: string
         default: ''
@@ -26,7 +33,7 @@ on:
         type: string
         default: ''
       ios_module:
-        description: 'iOS module being bumped (core/pushtemplates). Empty string skips iOS.'
+        description: 'iOS module being bumped (core/pushtemplates). Empty skips iOS.'
         required: false
         type: string
         default: ''
@@ -41,12 +48,12 @@ on:
         type: string
         default: ''
       model:
-        description: 'Claude model to use (e.g. sonnet-4-6, opus-4-7).'
+        description: 'Claude model to use (e.g. sonnet, opus, haiku).'
         required: false
         type: string
-        default: 'sonnet-4-6'
+        default: 'sonnet'
       skip_sync:
-        description: 'Skip Claude Sync + post-sync builds. Pre-sync builds still run. Use for debugging the build pipeline without Claude cost.'
+        description: 'Skip Claude Sync + post-sync builds. Pre-sync builds still run. Debug the build pipeline without Claude cost.'
         required: false
         type: boolean
         default: false
@@ -66,361 +73,156 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      # ─── Setup ────────────────────────────────────────────────────────────
-      # Checkout the tooling repo FIRST so its scripts are available for
-      # post-failure steps (compute-cost.sh, slack-notify.sh) even if a
-      # later step bails out.
+      # Checkout the tooling repo FIRST so its composite actions + scripts are
+      # available for every later step (incl. post-failure cost/slack).
       - name: Checkout tooling repo (this repo)
         uses: actions/checkout@v4
         with:
           repository: piyush-kukadiya/clevertap-wrapper-tooling
           path: tooling
 
-      - name: Sanity-check inputs
-        run: |
-          if [ -z "${{ inputs.android_version }}" ] && [ -z "${{ inputs.ios_version }}" ]; then
-            echo "::error::Both android_version and ios_version are empty. Nothing to sync."
-            exit 1
-          fi
-          if [ -n "${{ inputs.android_version }}" ] && [ -z "${{ inputs.android_module }}" ]; then
-            echo "::error::android_version set but android_module is empty."
-            exit 1
-          fi
-          if [ -n "${{ inputs.ios_version }}" ] && [ -z "${{ inputs.ios_module }}" ]; then
-            echo "::error::ios_version set but ios_module is empty."
-            exit 1
-          fi
-
-      - name: Resolve release name
-        id: release
-        run: |
-          name="${{ inputs.release_name }}"
-          [ -z "$name" ] && name=$(date -u +%Y-%m-%d)
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "branch=task/release_${name}" >> "$GITHUB_OUTPUT"
-
-      - name: Compute release date (human-readable, for CHANGELOG heading)
-        id: release_date
-        run: |
-          # Produces "June 5 2026"-style output to match existing CHANGELOG style.
-          echo "value=$(date -u '+%B %-d %Y')" >> "$GITHUB_OUTPUT"
-
-      - name: Mint GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
+      # ─── Shared setup (token, wrapper checkout, branch, Claude CLI) ────────
+      - name: Setup
+        id: setup
+        uses: ./tooling/.github/actions/setup
         with:
-          app-id: ${{ secrets.app_id }}
-          private-key: ${{ secrets.app_private_key }}
-          # Owner/repo derived from the CALLING repo (so this works for both
-          # CleverTap/clevertap-react-native and forks like
-          # piyush-kukadiya/clevertap-react-native used for testing).
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
+          android_version: ${{ inputs.android_version }}
+          ios_version:     ${{ inputs.ios_version }}
+          android_module:  ${{ inputs.android_module }}
+          ios_module:      ${{ inputs.ios_module }}
+          release_name:    ${{ inputs.release_name }}
+          app_id:          ${{ secrets.app_id }}
+          app_private_key: ${{ secrets.app_private_key }}
+          wrapper_path:    wrapper
 
-      - name: Checkout wrapper repo (develop)
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository }}
-          ref: develop
-          token: ${{ steps.app-token.outputs.token }}
-          path: wrapper
-          fetch-depth: 0
-
-      - name: Bail if branch already exists
-        working-directory: wrapper
+      # ─── Resolve wrapper-specific Claude config (prompt + tool allowlist) ──
+      # The allowlist pins python3 to the diff tool (prevents `python3 -c`
+      # exfiltration), allows read-only git + inert text utils, and the
+      # wrapper's build CLIs. WebFetch/WebSearch are deliberately excluded.
+      - name: Resolve Claude config
+        id: cc
+        shell: bash
         run: |
-          if git ls-remote --exit-code --heads origin "${{ steps.release.outputs.branch }}"; then
-            echo "::error::Branch ${{ steps.release.outputs.branch }} already exists. Pick a different release_name."
-            exit 1
-          fi
-          git checkout -b "${{ steps.release.outputs.branch }}"
-          git config user.email "clevertap-wrapper-sync[bot]@users.noreply.github.com"
-          git config user.name  "clevertap-wrapper-sync[bot]"
-
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Sanity-check tools
-        run: |
-          claude --version
-          python3 --version
-          node --version
-          which envsubst || brew install gettext
-
-      # ─── Java 17 setup (moved earlier — needed by pre-sync Android build) ─
-      # RN 0.74 gradle plugin works most reliably on Java 17. macos-14 runner
-      # default JDK isn't guaranteed across image revisions.
-      - name: Setup Java 17 (for Android build)
-        if: inputs.android_version != ''
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      # The Example app's android/app/build.gradle applies the Google
-      # Services plugin (for FCM). It requires a google-services.json that's
-      # gitignored (contains a real Firebase project key). For CI builds we
-      # don't need working Firebase — we just need the plugin to find a
-      # syntactically valid file so the build proceeds.
-      #
-      # Stub package_name MUST match the Example's applicationId (com.reactnct)
-      # or the Google Services plugin rejects the file.
-      - name: Write stub google-services.json
-        if: inputs.android_version != ''
-        run: |
-          cat > ${{ github.workspace }}/wrapper/Example/android/app/google-services.json <<'EOF'
-          {
-            "project_info": {
-              "project_number": "000000000000",
-              "project_id": "stub-project-for-ci",
-              "storage_bucket": "stub-project-for-ci.appspot.com"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
-                  "android_client_info": {
-                    "package_name": "com.reactnct"
-                  }
-                },
-                "api_key": [
-                  { "current_key": "STUB_CI_KEY_NOT_FOR_USE" }
-                ],
-                "services": {
-                  "appinvite_service": {
-                    "other_platform_oauth_client": []
-                  }
-                }
-              }
-            ],
-            "configuration_version": "1"
-          }
-          EOF
-
-      # The Example app's iOS Podfile sets :modular_headers => true on
-      # CleverTap-iOS-SDK and CTNotificationService directly, but those Swift
-      # pods transitively pull in SDWebImage (an Obj-C pod) which ALSO needs
-      # modular headers when imported from Swift.
-      #
-      # First attempt was `use_modular_headers!` globally — too aggressive,
-      # caused "redefinition of module 'ReactCommon'" because RN's internal
-      # pods already define their own modules.
-      #
-      # This patch is surgical: inject `pod "SDWebImage", :modular_headers
-      # => true` inside each `target 'X' do ... end` block (just before the
-      # closing `end`). The `def ... end` helper block is left alone via
-      # state tracking, so the helper isn't polluted.
-      #
-      # awk state vars:
-      #   in_def    — true inside a `def NAME ... end` block
-      #   in_target — true inside a `target 'X' do ... end` block
-      # Injection happens only when leaving a `target` block, never a `def`.
-      - name: Patch Podfile (per-target SDWebImage modular_headers)
-        if: inputs.ios_version != ''
-        run: |
-          cd wrapper/Example/ios
-          if grep -q 'pod "SDWebImage", :modular_headers' Podfile; then
-            echo "Podfile already declares SDWebImage modular_headers; no patch needed."
+          DIFF_TOOL="${{ github.workspace }}/tooling/tools/diff_native_api.py"
+          COMMON="Read,Edit,Write,Glob,Grep,Bash(python3 ${DIFF_TOOL}:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"
+          if [ "${{ inputs.wrapper }}" = "flutter" ]; then
+            echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator-flutter.md" >> "$GITHUB_OUTPUT"
+            echo "tools=${COMMON},Bash(flutter:*),Bash(dart:*)" >> "$GITHUB_OUTPUT"
           else
-            awk '
-              /^def [a-zA-Z_]+/ { in_def = 1 }
-              in_def && /^end$/ { in_def = 0; print; next }
-              /^target '\''[^'\'']+'\'' do/ { in_target = 1; print; next }
-              in_target && /^end$/ {
-                  print "  pod \"SDWebImage\", :modular_headers => true"
-                  print
-                  in_target = 0
-                  next
-              }
-              { print }
-            ' Podfile > Podfile.patched
-            mv Podfile.patched Podfile
-            echo "Patched Podfile. Lines added:"
-            grep -n "SDWebImage" Podfile
+            echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator.md" >> "$GITHUB_OUTPUT"
+            echo "tools=${COMMON},Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*)" >> "$GITHUB_OUTPUT"
           fi
 
       # ─── PRE-SYNC BUILD GATE ──────────────────────────────────────────────
-      # Verifies the build pipeline works on the unchanged wrapper checkout
-      # BEFORE we spend Claude tokens on Sync. If pre-sync builds fail, the
-      # job aborts here — no Claude cost incurred.
-      - name: Android build (pre-sync)
-        if: inputs.android_version != ''
-        working-directory: wrapper
-        run: |
-          cd Example
-          # Use `npm install`, not `npm ci`: Example's lockfile records the
-          # wrapper's version (via file:../ dep) at lockfile-generation time.
-          # If the wrapper version has since moved, `npm ci` refuses to
-          # proceed. `npm install` updates the lockfile to match reality.
-          npm install --no-audit --no-fund --legacy-peer-deps
-          cd android
-          ./gradlew :app:assembleDebug --no-daemon
+      # Verifies the build pipeline works on the unchanged checkout BEFORE we
+      # spend Claude tokens. Build failures are captured as outputs; the gate
+      # step below aborts the run (no Claude cost) if either platform failed.
+      - name: Build pre-sync (flutter)
+        id: pre_flutter
+        if: inputs.wrapper == 'flutter'
+        uses: ./tooling/.github/actions/build/flutter
+        with:
+          phase:           pre-sync
+          android_version: ${{ inputs.android_version }}
+          ios_version:     ${{ inputs.ios_version }}
+          wrapper_path:    wrapper
 
-      - name: iOS build (pre-sync)
-        if: inputs.ios_version != ''
-        working-directory: wrapper
+      - name: Build pre-sync (react-native)
+        id: pre_rn
+        if: inputs.wrapper == 'react-native'
+        uses: ./tooling/.github/actions/build/react-native
+        with:
+          phase:           pre-sync
+          android_version: ${{ inputs.android_version }}
+          ios_version:     ${{ inputs.ios_version }}
+          wrapper_path:    wrapper
+
+      - name: Pre-sync build gate
+        shell: bash
         run: |
-          cd Example
-          # See Android build (pre-sync) for why we use `npm install` here
-          # instead of `npm ci`.
-          npm install --no-audit --no-fund --legacy-peer-deps
-          cd ios
-          pod install --repo-update
-          xcodebuild -workspace Example.xcworkspace \
-                     -scheme Example \
-                     -configuration Debug \
-                     -sdk iphonesimulator \
-                     -derivedDataPath build \
-                     CODE_SIGNING_ALLOWED=NO \
-                     build
+          A="${{ steps.pre_flutter.outputs.android_outcome || steps.pre_rn.outputs.android_outcome }}"
+          I="${{ steps.pre_flutter.outputs.ios_outcome || steps.pre_rn.outputs.ios_outcome }}"
+          echo "pre-sync outcomes: android='$A' ios='$I'"
+          if [ "$A" = "failure" ] || [ "$I" = "failure" ]; then
+            echo "::error::Pre-sync build failed — aborting before Claude sync (no Claude cost)."
+            exit 1
+          fi
 
       # ─── CLAUDE SYNC (skippable via skip_sync) ────────────────────────────
+      # Android first, then iOS, sharing the runner filesystem. Each step's
+      # outcome bubbles up (composite) so the commit/PR conditions below work.
       - name: Sync Android
         id: sync_android
         if: inputs.android_version != '' && !inputs.skip_sync
-        working-directory: wrapper
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
-          PLATFORM: android
-          MODULE: ${{ inputs.android_module }}
-          NEW_VERSION: ${{ inputs.android_version }}
-          DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
-          RELEASE_DATE: ${{ steps.release_date.outputs.value }}
-        run: |
-          set -x
-          which claude
-          claude --version
-          prompt="$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)"
-          echo "Prompt length: ${#prompt} chars"
-          echo "API key length: ${#ANTHROPIC_API_KEY} chars"
-          set +x
-          # Explicit allowlist of tools Claude may run without interactive
-          # approval. Bash() entries are command-prefix matches:
-          # - python3 is pinned to the diff tool script (prevents `python3 -c`
-          #   evasions that could exfiltrate secrets via urllib).
-          # - npm / gradle / pod / xcodebuild allow expected build commands
-          #   (the self-heal loop may retrigger these).
-          # - git is read-only operations (push/commit/reset NOT allowed —
-          #   those happen later in the workflow with the App token).
-          # - jq/cat/grep/sed/awk/head/tail/ls/echo/mkdir are inert text utils.
-          # - WebFetch/WebSearch deliberately NOT included (no need; diff
-          #   tool already fetches what's required via Python's urllib).
-          ALLOWED_TOOLS="Read,Edit,Write,Glob,Grep,Bash(python3 ${{ github.workspace }}/tooling/tools/diff_native_api.py:*),Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"
-          # stdout goes to the JSON output file; capture stderr separately so we can
-          # see actual error messages from claude on failure.
-          set +e
-          claude -p "$prompt" \
-                 --model "${{ inputs.model }}" \
-                 --allowed-tools "$ALLOWED_TOOLS" \
-                 --output-format json \
-                 > ${{ github.workspace }}/claude-output-android.json \
-                 2> ${{ github.workspace }}/claude-stderr-android.log
-          rc=$?
-          set -e
-          if [ $rc -ne 0 ]; then
-            echo "::error::claude exited with $rc"
-            echo "::group::stderr"
-            cat ${{ github.workspace }}/claude-stderr-android.log || true
-            echo "::endgroup::"
-            echo "::group::stdout (truncated)"
-            head -100 ${{ github.workspace }}/claude-output-android.json || true
-            echo "::endgroup::"
-            exit $rc
-          fi
-          echo "Android sync produced:"
-          # The CLI's --output-format json wraps Claude's response with cost +
-          # usage at the top level. Claude's structured triage log lives inside
-          # `.result` as a markdown ```json``` block. Extract + summarize.
-          python3 ${{ github.workspace }}/tooling/scripts/summarize-claude-output.py \
-              ${{ github.workspace }}/claude-output-android.json || true
+        uses: ./tooling/.github/actions/claude-sync
+        with:
+          platform:          android
+          module:            ${{ inputs.android_module }}
+          new_version:       ${{ inputs.android_version }}
+          prompt_path:       ${{ steps.cc.outputs.prompt }}
+          allowed_tools:     ${{ steps.cc.outputs.tools }}
+          diff_tool_path:    ${{ github.workspace }}/tooling/tools/diff_native_api.py
+          release_date:      ${{ steps.setup.outputs.release_date }}
+          model:             ${{ inputs.model }}
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          output_file:       ${{ github.workspace }}/claude-output-android.json
+          tooling_root:      ${{ github.workspace }}/tooling
+          wrapper_path:      wrapper
 
       - name: Sync iOS
         id: sync_ios
         if: inputs.ios_version != '' && !inputs.skip_sync
-        working-directory: wrapper
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
-          PLATFORM: ios
-          MODULE: ${{ inputs.ios_module }}
-          NEW_VERSION: ${{ inputs.ios_version }}
-          DIFF_TOOL_PATH: ${{ github.workspace }}/tooling/tools/diff_native_api.py
-          RELEASE_DATE: ${{ steps.release_date.outputs.value }}
-        run: |
-          # Same allowlist rationale as Sync Android — see comments there.
-          ALLOWED_TOOLS="Read,Edit,Write,Glob,Grep,Bash(python3 ${{ github.workspace }}/tooling/tools/diff_native_api.py:*),Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"
-          set +e
-          claude -p "$(envsubst < ${{ github.workspace }}/tooling/prompts/sync-orchestrator.md)" \
-                 --model "${{ inputs.model }}" \
-                 --allowed-tools "$ALLOWED_TOOLS" \
-                 --output-format json \
-                 > ${{ github.workspace }}/claude-output-ios.json \
-                 2> ${{ github.workspace }}/claude-stderr-ios.log
-          rc=$?
-          set -e
-          if [ $rc -ne 0 ]; then
-            echo "::error::claude exited with $rc"
-            echo "::group::stderr"
-            cat ${{ github.workspace }}/claude-stderr-ios.log || true
-            echo "::endgroup::"
-            echo "::group::stdout (truncated)"
-            head -100 ${{ github.workspace }}/claude-output-ios.json || true
-            echo "::endgroup::"
-            exit $rc
-          fi
-          echo "iOS sync produced:"
-          python3 ${{ github.workspace }}/tooling/scripts/summarize-claude-output.py \
-              ${{ github.workspace }}/claude-output-ios.json || true
+        uses: ./tooling/.github/actions/claude-sync
+        with:
+          platform:          ios
+          module:            ${{ inputs.ios_module }}
+          new_version:       ${{ inputs.ios_version }}
+          prompt_path:       ${{ steps.cc.outputs.prompt }}
+          allowed_tools:     ${{ steps.cc.outputs.tools }}
+          diff_tool_path:    ${{ github.workspace }}/tooling/tools/diff_native_api.py
+          release_date:      ${{ steps.setup.outputs.release_date }}
+          model:             ${{ inputs.model }}
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          output_file:       ${{ github.workspace }}/claude-output-ios.json
+          tooling_root:      ${{ github.workspace }}/tooling
+          wrapper_path:      wrapper
 
       # ─── POST-SYNC BUILD VERIFY ───────────────────────────────────────────
-      # Re-run the same builds on the Claude-edited source. Skipped when
-      # skip_sync=true (no edits were made). Lint is intentionally NOT run
-      # (root lint script globs into Example/ whose .eslintrc.js references
-      # a deprecated package — the builds are the real correctness gate).
-      - name: Android build (post-sync)
-        id: android_build_post_sync
-        if: inputs.android_version != '' && !inputs.skip_sync
-        working-directory: wrapper
-        run: |
-          cd Example
-          # Use `npm install`, not `npm ci`: Example's lockfile records the
-          # wrapper's version (via file:../ dep) at lockfile-generation time.
-          # If the wrapper version has since moved, `npm ci` refuses to
-          # proceed. `npm install` updates the lockfile to match reality.
-          npm install --no-audit --no-fund --legacy-peer-deps
-          cd android
-          ./gradlew :app:assembleDebug --no-daemon
+      # Re-build on Claude's edits. Implicit success() gating means these are
+      # skipped if a Sync step failed. Build failures are captured (not fatal)
+      # so the PR still opens with a build-failed label.
+      - name: Build post-sync (flutter)
+        id: post_flutter
+        if: inputs.wrapper == 'flutter' && !inputs.skip_sync
+        uses: ./tooling/.github/actions/build/flutter
+        with:
+          phase:           post-sync
+          android_version: ${{ inputs.android_version }}
+          ios_version:     ${{ inputs.ios_version }}
+          wrapper_path:    wrapper
 
-      - name: iOS build (post-sync)
-        id: ios_build_post_sync
-        if: inputs.ios_version != '' && !inputs.skip_sync
-        working-directory: wrapper
+      - name: Build post-sync (react-native)
+        id: post_rn
+        if: inputs.wrapper == 'react-native' && !inputs.skip_sync
+        uses: ./tooling/.github/actions/build/react-native
+        with:
+          phase:           post-sync
+          android_version: ${{ inputs.android_version }}
+          ios_version:     ${{ inputs.ios_version }}
+          wrapper_path:    wrapper
+
+      - name: Compute post-sync build outcomes
+        id: outcomes
+        if: always()
+        shell: bash
         run: |
-          cd Example
-          # See Android build (pre-sync) for why we use `npm install` here
-          # instead of `npm ci`.
-          npm install --no-audit --no-fund --legacy-peer-deps
-          cd ios
-          # Claude bumped CleverTap-iOS-SDK in clevertap-react-native.podspec,
-          # but Example/ios/Podfile.lock still pins the old version. Deleting
-          # the lock forces pod install to re-resolve against the new podspec.
-          # The fresh lockfile gets committed as part of the auto-PR.
-          rm -f Podfile.lock
-          pod install --repo-update
-          xcodebuild -workspace Example.xcworkspace \
-                     -scheme Example \
-                     -configuration Debug \
-                     -sdk iphonesimulator \
-                     -derivedDataPath build \
-                     CODE_SIGNING_ALLOWED=NO \
-                     build
+          echo "android=${{ steps.post_flutter.outputs.android_outcome || steps.post_rn.outputs.android_outcome }}" >> "$GITHUB_OUTPUT"
+          echo "ios=${{ steps.post_flutter.outputs.ios_outcome || steps.post_rn.outputs.ios_outcome }}" >> "$GITHUB_OUTPUT"
 
       # ─── Commit, push, open PR ────────────────────────────────────────────
-      # IMPORTANT: these run with !cancelled() so a failing post-sync build
-      # does NOT prevent the PR from opening. The PR gets a `build-failed`
-      # label (set in open-combined-pr.sh based on the build outcomes passed
-      # via env). Reviewer takes over from there — pulls branch, fixes, pushes.
-      # However, they do skip if Sync itself failed (Claude couldn't even
-      # run) or if there were no edits to commit.
+      # Run with !cancelled() so a failing post-sync build does NOT prevent the
+      # PR opening (it gets a build-failed label). Skip if Sync itself failed or
+      # there were no edits.
       - name: Commit changes
         if: |
           !cancelled()
@@ -428,6 +230,7 @@ jobs:
           && steps.sync_ios.outcome != 'failure'
           && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
         working-directory: wrapper
+        shell: bash
         run: |
           git add -A
           if git diff --cached --quiet; then
@@ -455,7 +258,7 @@ jobs:
           && steps.sync_ios.outcome != 'failure'
           && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
         working-directory: wrapper
-        run: git push origin "${{ steps.release.outputs.branch }}"
+        run: git push origin "${{ steps.setup.outputs.branch }}"
 
       - name: Open combined PR
         if: |
@@ -464,44 +267,54 @@ jobs:
           && steps.sync_android.outcome != 'failure'
           && steps.sync_ios.outcome != 'failure'
           && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
-        working-directory: wrapper
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
-          ANDROID_MODULE: ${{ inputs.android_module }}
-          ANDROID_VERSION: ${{ inputs.android_version }}
-          IOS_MODULE: ${{ inputs.ios_module }}
-          IOS_VERSION: ${{ inputs.ios_version }}
-          RELEASE_NAME: ${{ steps.release.outputs.name }}
-          BRANCH: ${{ steps.release.outputs.branch }}
-          ANDROID_OUTPUT: ${{ github.workspace }}/claude-output-android.json
-          IOS_OUTPUT: ${{ github.workspace }}/claude-output-ios.json
-          # Post-sync build outcomes — open-combined-pr.sh adds a
-          # `build-failed` label if either is "failure".
-          ANDROID_BUILD_OUTCOME: ${{ steps.android_build_post_sync.outcome }}
-          IOS_BUILD_OUTCOME: ${{ steps.ios_build_post_sync.outcome }}
-        run: |
-          bash ${{ github.workspace }}/tooling/scripts/open-combined-pr.sh
+        uses: ./tooling/.github/actions/open-pr
+        with:
+          gh_token:              ${{ steps.setup.outputs.token }}
+          anthropic_api_key:     ${{ secrets.anthropic_api_key }}
+          wrapper:               ${{ inputs.wrapper }}
+          android_module:        ${{ inputs.android_module }}
+          android_version:       ${{ inputs.android_version }}
+          ios_module:            ${{ inputs.ios_module }}
+          ios_version:           ${{ inputs.ios_version }}
+          release_name:          ${{ steps.setup.outputs.release_name }}
+          branch:                ${{ steps.setup.outputs.branch }}
+          android_output:        ${{ github.workspace }}/claude-output-android.json
+          ios_output:            ${{ github.workspace }}/claude-output-ios.json
+          android_build_outcome: ${{ steps.outcomes.outputs.android }}
+          ios_build_outcome:     ${{ steps.outcomes.outputs.ios }}
+          model:                 ${{ inputs.model }}
+          tooling_root:          ${{ github.workspace }}/tooling
+          wrapper_path:          wrapper
 
-      # ─── Cost report and Slack notification ───────────────────────────────
+      # ─── Cost report ──────────────────────────────────────────────────────
       - name: Compute and report cost
         if: always() && env.no_changes != 'true'
         env:
           ANDROID_OUTPUT: ${{ github.workspace }}/claude-output-android.json
-          IOS_OUTPUT: ${{ github.workspace }}/claude-output-ios.json
-          BRANCH: ${{ steps.release.outputs.branch }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          REPO: ${{ github.repository }}
-          SOFT_CAP_USD: '3'
+          IOS_OUTPUT:     ${{ github.workspace }}/claude-output-ios.json
+          BRANCH:         ${{ steps.setup.outputs.branch }}
+          GH_TOKEN:       ${{ steps.setup.outputs.token }}
+          REPO:           ${{ github.repository }}
+          SOFT_CAP_USD:   '3'
         run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
 
+      # ─── Re-assert job failure on post-sync build failure ─────────────────
+      # The PR is already open (with a build-failed label). Failing here makes
+      # the run red and triggers the Slack ping, matching the prior behavior.
+      - name: Flag post-sync build failure
+        if: always() && (steps.outcomes.outputs.android == 'failure' || steps.outcomes.outputs.ios == 'failure')
+        shell: bash
+        run: |
+          echo "::error::Post-sync build failed. PR was opened with a build-failed label; failing the run so maintainers are notified."
+          exit 1
+
       - name: Slack ping on failure
-        if: failure() && steps.app-token.outcome == 'success'
+        if: failure() && steps.setup.outcome == 'success'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.slack_webhook_url }}
-          WRAPPER: ${{ inputs.wrapper }}
-          BRANCH: ${{ steps.release.outputs.branch }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WRAPPER:           ${{ inputs.wrapper }}
+          BRANCH:            ${{ steps.setup.outputs.branch }}
+          RUN_URL:           ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash ${{ github.workspace }}/tooling/scripts/slack-notify.sh
 
       - name: Upload sync outputs as artifacts
@@ -514,23 +327,33 @@ jobs:
             claude-output-ios.json
           if-no-files-found: ignore
 
-      # ─── Upload post-sync build artifacts ─────────────────────────────────
-      # APK / .app from the post-sync build (i.e., the artifact that reflects
-      # Claude's edits). Skipped when skip_sync=true (the pre-sync APK is
-      # baseline-only — not interesting to ship). Uploaded even when the
-      # post-sync build failed, so the maintainer can inspect partial output.
-      # `.app` is for iOS simulator — real `.ipa` requires device signing
-      # which is intentionally not set up.
-      - name: Upload Android APK (post-sync)
-        if: always() && !inputs.skip_sync && inputs.android_version != ''
+      # ─── Post-sync build artifacts (per wrapper) ──────────────────────────
+      - name: Upload Android APK (flutter, post-sync)
+        if: always() && !inputs.skip_sync && inputs.android_version != '' && inputs.wrapper == 'flutter'
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-android-apk-post-sync
+          path: wrapper/example/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: warn
+
+      - name: Upload Android APK (react-native, post-sync)
+        if: always() && !inputs.skip_sync && inputs.android_version != '' && inputs.wrapper == 'react-native'
         uses: actions/upload-artifact@v4
         with:
           name: example-android-apk-post-sync
           path: wrapper/Example/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: warn
 
-      - name: Upload iOS .app (post-sync)
-        if: always() && !inputs.skip_sync && inputs.ios_version != ''
+      - name: Upload iOS app (flutter, post-sync)
+        if: always() && !inputs.skip_sync && inputs.ios_version != '' && inputs.wrapper == 'flutter'
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-ios-app-post-sync
+          path: wrapper/example/build/ios/iphoneos/Runner.app
+          if-no-files-found: ignore
+
+      - name: Upload iOS app (react-native, post-sync)
+        if: always() && !inputs.skip_sync && inputs.ios_version != '' && inputs.wrapper == 'react-native'
         uses: actions/upload-artifact@v4
         with:
           name: example-ios-app-post-sync

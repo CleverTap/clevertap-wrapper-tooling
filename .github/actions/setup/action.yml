@@ -1,0 +1,131 @@
+name: 'Wrapper sync setup'
+description: >
+  Shared, wrapper-agnostic setup for the native-release sync: validate inputs,
+  resolve the release name/date, mint a GitHub App token, check out the wrapper
+  repo on a fresh branch, and install the Claude CLI. Outputs the branch name,
+  release name/date, and the App token for downstream steps.
+
+inputs:
+  android_version:
+    description: 'New Android version (empty skips Android).'
+    required: false
+    default: ''
+  ios_version:
+    description: 'New iOS version (empty skips iOS).'
+    required: false
+    default: ''
+  android_module:
+    description: 'Android module (required when android_version is set).'
+    required: false
+    default: ''
+  ios_module:
+    description: 'iOS module (required when ios_version is set).'
+    required: false
+    default: ''
+  release_name:
+    description: 'Branch suffix; defaults to today YYYY-MM-DD.'
+    required: false
+    default: ''
+  app_id:
+    description: 'clevertap-wrapper-sync GitHub App id.'
+    required: true
+  app_private_key:
+    description: 'GitHub App private key (.pem contents).'
+    required: true
+  wrapper_path:
+    description: 'Path under the workspace to check out the wrapper repo into.'
+    required: false
+    default: 'wrapper'
+
+outputs:
+  branch:
+    description: 'The created feature branch name.'
+    value: ${{ steps.release.outputs.branch }}
+  release_name:
+    description: 'Resolved release name.'
+    value: ${{ steps.release.outputs.name }}
+  release_date:
+    description: 'Human-readable release date for the CHANGELOG heading.'
+    value: ${{ steps.release_date.outputs.value }}
+  token:
+    description: 'Minted GitHub App token (used for push / PR).'
+    value: ${{ steps.app-token.outputs.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Sanity-check inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.android_version }}" ] && [ -z "${{ inputs.ios_version }}" ]; then
+          echo "::error::Both android_version and ios_version are empty. Nothing to sync."
+          exit 1
+        fi
+        if [ -n "${{ inputs.android_version }}" ] && [ -z "${{ inputs.android_module }}" ]; then
+          echo "::error::android_version set but android_module is empty."
+          exit 1
+        fi
+        if [ -n "${{ inputs.ios_version }}" ] && [ -z "${{ inputs.ios_module }}" ]; then
+          echo "::error::ios_version set but ios_module is empty."
+          exit 1
+        fi
+
+    - name: Resolve release name
+      id: release
+      shell: bash
+      run: |
+        name="${{ inputs.release_name }}"
+        [ -z "$name" ] && name=$(date -u +%Y-%m-%d)
+        echo "name=$name" >> "$GITHUB_OUTPUT"
+        echo "branch=task/release_${name}" >> "$GITHUB_OUTPUT"
+
+    - name: Compute release date (human-readable, for CHANGELOG heading)
+      id: release_date
+      shell: bash
+      run: |
+        # Produces "June 5 2026"-style output to match existing CHANGELOG style.
+        echo "value=$(date -u '+%B %-d %Y')" >> "$GITHUB_OUTPUT"
+
+    - name: Mint GitHub App token
+      id: app-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ inputs.app_id }}
+        private-key: ${{ inputs.app_private_key }}
+        # Owner/repo derived from the CALLING repo (works for both
+        # CleverTap/clevertap-<wrapper> and personal forks used for testing).
+        owner: ${{ github.repository_owner }}
+        repositories: ${{ github.event.repository.name }}
+
+    - name: Checkout wrapper repo (develop)
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository }}
+        ref: develop
+        token: ${{ steps.app-token.outputs.token }}
+        path: ${{ inputs.wrapper_path }}
+        fetch-depth: 0
+
+    - name: Bail if branch already exists, else create it
+      working-directory: ${{ inputs.wrapper_path }}
+      shell: bash
+      run: |
+        if git ls-remote --exit-code --heads origin "${{ steps.release.outputs.branch }}"; then
+          echo "::error::Branch ${{ steps.release.outputs.branch }} already exists. Pick a different release_name."
+          exit 1
+        fi
+        git checkout -b "${{ steps.release.outputs.branch }}"
+        git config user.email "clevertap-wrapper-sync[bot]@users.noreply.github.com"
+        git config user.name  "clevertap-wrapper-sync[bot]"
+
+    - name: Install Claude Code CLI
+      shell: bash
+      run: npm install -g @anthropic-ai/claude-code
+
+    - name: Sanity-check tools
+      shell: bash
+      run: |
+        claude --version
+        python3 --version
+        node --version
+        which envsubst || brew install gettext
