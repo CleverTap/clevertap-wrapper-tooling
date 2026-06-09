@@ -60,6 +60,33 @@ runs:
       shell: bash
       run: |
         set +e
+        # The example app applies the Google Services plugin (for FCM). Its
+        # google-services.json is gitignored, so it's absent on a fresh
+        # checkout. For CI we just need a syntactically valid file so the
+        # plugin proceeds. The stub package_name MUST match the example's
+        # applicationId (com.example.clevertap_plugin_example).
+        if [ ! -f android/app/google-services.json ]; then
+          cat > android/app/google-services.json <<'EOF'
+        {
+          "project_info": {
+            "project_number": "000000000000",
+            "project_id": "stub-project-for-ci",
+            "storage_bucket": "stub-project-for-ci.appspot.com"
+          },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                "android_client_info": { "package_name": "com.example.clevertap_plugin_example" }
+              },
+              "api_key": [ { "current_key": "STUB_CI_KEY_NOT_FOR_USE" } ],
+              "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+            }
+          ],
+          "configuration_version": "1"
+        }
+        EOF
+        fi
         flutter pub get
         flutter build apk --debug
         rc=$?
