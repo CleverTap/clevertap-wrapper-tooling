@@ -26,6 +26,10 @@ inputs:
     description: 'Branch suffix; defaults to today YYYY-MM-DD.'
     required: false
     default: ''
+  base_ref:
+    description: 'Wrapper branch to check out and branch from. Default develop; point at a test baseline branch for testing.'
+    required: false
+    default: 'develop'
   app_id:
     description: 'clevertap-wrapper-sync GitHub App id.'
     required: true
@@ -97,11 +101,11 @@ runs:
         owner: ${{ github.repository_owner }}
         repositories: ${{ github.event.repository.name }}
 
-    - name: Checkout wrapper repo (develop)
+    - name: Checkout wrapper repo
       uses: actions/checkout@v4
       with:
         repository: ${{ github.repository }}
-        ref: develop
+        ref: ${{ inputs.base_ref }}
         token: ${{ steps.app-token.outputs.token }}
         path: ${{ inputs.wrapper_path }}
         fetch-depth: 0

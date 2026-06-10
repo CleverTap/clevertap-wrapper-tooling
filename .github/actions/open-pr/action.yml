@@ -36,6 +36,10 @@ inputs:
   branch:
     description: 'Feature branch the PR is opened from.'
     required: true
+  base_ref:
+    description: 'Branch the PR is opened against (default develop).'
+    required: false
+    default: 'develop'
   android_output:
     description: 'Path to claude-output-android.json.'
     required: true
@@ -77,6 +81,7 @@ runs:
         IOS_VERSION: ${{ inputs.ios_version }}
         RELEASE_NAME: ${{ inputs.release_name }}
         BRANCH: ${{ inputs.branch }}
+        BASE_REF: ${{ inputs.base_ref }}
         ANDROID_OUTPUT: ${{ inputs.android_output }}
         IOS_OUTPUT: ${{ inputs.ios_output }}
         ANDROID_BUILD_OUTCOME: ${{ inputs.android_build_outcome }}

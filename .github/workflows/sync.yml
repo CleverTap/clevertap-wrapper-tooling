@@ -47,6 +47,11 @@ on:
         required: false
         type: string
         default: ''
+      base_ref:
+        description: 'Wrapper branch to sync from / open the PR against. Default develop; point at a test baseline branch for testing.'
+        required: false
+        type: string
+        default: 'develop'
       model:
         description: 'Claude model to use (e.g. sonnet, opus, haiku).'
         required: false
@@ -91,6 +96,7 @@ jobs:
           android_module:  ${{ inputs.android_module }}
           ios_module:      ${{ inputs.ios_module }}
           release_name:    ${{ inputs.release_name }}
+          base_ref:        ${{ inputs.base_ref }}
           app_id:          ${{ secrets.app_id }}
           app_private_key: ${{ secrets.app_private_key }}
           wrapper_path:    wrapper
@@ -278,6 +284,7 @@ jobs:
           ios_version:           ${{ inputs.ios_version }}
           release_name:          ${{ steps.setup.outputs.release_name }}
           branch:                ${{ steps.setup.outputs.branch }}
+          base_ref:              ${{ inputs.base_ref }}
           android_output:        ${{ github.workspace }}/claude-output-android.json
           ios_output:            ${{ github.workspace }}/claude-output-ios.json
           android_build_outcome: ${{ steps.outcomes.outputs.android }}

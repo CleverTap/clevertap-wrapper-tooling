@@ -20,6 +20,7 @@ set -uo pipefail
 MODEL="${MODEL:-sonnet-4-6}"
 TOOLING_ROOT="${TOOLING_ROOT:-${GITHUB_WORKSPACE}/tooling}"
 WRAPPER="${WRAPPER:-wrapper}"
+BASE_REF="${BASE_REF:-develop}"
 
 # Build PR title
 title="task: sync ${WRAPPER} with native release ${RELEASE_NAME}"
@@ -96,14 +97,14 @@ done
 # Open the PR. If --label fails, retry without labels so we at least get
 # the PR opened (labels can be added after the fact via gh pr edit).
 if ! gh pr create \
-        --base develop \
+        --base "${BASE_REF}" \
         --head "${BRANCH}" \
         --title "$title" \
         --body "$body" \
         --label "$labels"; then
     echo "::warning::PR create with labels failed; retrying without labels."
     if ! gh pr create \
-            --base develop \
+            --base "${BASE_REF}" \
             --head "${BRANCH}" \
             --title "$title" \
             --body "$body"; then
