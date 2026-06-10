@@ -2,15 +2,13 @@ You are generating the PR description for an auto-sync PR opened by `clevertap-w
 
 ## Inputs
 
-- **Android sync log:** ${ANDROID_OUTPUT} (may not exist if Android wasn't synced this run)
-- **iOS sync log:** ${IOS_OUTPUT} (may not exist if iOS wasn't synced this run)
 - **Release name:** ${RELEASE_NAME}
 - **Branch:** ${BRANCH}
 - **Android module/version:** ${ANDROID_MODULE} / ${ANDROID_VERSION}
 - **iOS module/version:** ${IOS_MODULE} / ${IOS_VERSION}
 - **Wrapper:** ${WRAPPER}
 
-Read the JSON logs that exist. Use only the data present — do not invent or speculate.
+The Android and iOS sync logs (the `claude -p --output-format json` envelopes) are **appended verbatim at the END of this prompt**, between `=== BEGIN ... ===` / `=== END ... ===` markers. A platform's log is empty/absent if it wasn't synced this run. Each envelope's `.result` field contains a fenced ```json``` block with the structured sync log (`surfaced`, `skipped`, `deferred`, `wrapper_version`, `docs_updated`, `native_changelogs`, etc.), and the envelope's top level has `total_cost_usd` and `usage`. Parse those. Use only the data present — do not invent or speculate.
 
 ## Output
 
@@ -108,6 +106,7 @@ This PR is auto-generated. Please:
 
 ## Constraints
 
+- **Output ONLY the Markdown PR body.** Your entire response must begin with the `## Sync ...` heading. Do NOT write any preamble, reasoning, or explanation before it (no "Here's the PR description:", no "I now have…"), and do NOT wrap the whole document in a ```` ```markdown ```` fence.
 - **Don't invent data.** If `skipped` is empty, render the heading and "(0)" or omit the bullets.
 - **Don't add commentary outside the structured sections.** The reviewer wants a scannable document.
 - **Keep it short.** Bullets are one line each. No paragraphs.

@@ -32,11 +32,33 @@ elif [ -n "${IOS_VERSION:-}" ]; then
     title="task: sync ${WRAPPER} ← iOS ${IOS_VERSION} (${RELEASE_NAME})"
 fi
 
-# Ask Claude to generate the PR body from the structured logs
-export WRAPPER ANDROID_OUTPUT IOS_OUTPUT ANDROID_MODULE ANDROID_VERSION IOS_MODULE IOS_VERSION RELEASE_NAME BRANCH
+# Ask Claude to generate the PR body from the structured logs.
+export WRAPPER ANDROID_MODULE ANDROID_VERSION IOS_MODULE IOS_VERSION RELEASE_NAME BRANCH
 
 prompt="$(envsubst < "${TOOLING_ROOT}/prompts/pr-description.md")"
+
+# Append the raw sync logs to the prompt so Claude doesn't need to read files
+# outside its working directory (the JSON envelopes live at the workspace root,
+# while this runs from the wrapper checkout). Appended AFTER envsubst so the
+# JSON's own `$` characters aren't mangled.
+android_log="$(cat "${ANDROID_OUTPUT}" 2>/dev/null || true)"
+ios_log="$(cat "${IOS_OUTPUT}" 2>/dev/null || true)"
+prompt="${prompt}
+
+=== BEGIN android sync log (claude-output-android.json) ===
+${android_log}
+=== END android sync log ===
+
+=== BEGIN ios sync log (claude-output-ios.json) ===
+${ios_log}
+=== END ios sync log ==="
+
 body=$(claude -p "$prompt" --model "$MODEL")
+
+# Defensive: strip any preamble before the first Markdown H2 (Claude sometimes
+# prepends "Here's the PR description:" etc.). Keep from the first "## " onward.
+cleaned="$(printf '%s\n' "$body" | sed -n '/^## /,$p')"
+[ -n "$cleaned" ] && body="$cleaned"
 
 if [ -z "$body" ]; then
     echo "::warning::Claude returned an empty PR body. Falling back to a minimal description."
