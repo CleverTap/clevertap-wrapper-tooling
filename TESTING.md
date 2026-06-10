@@ -1,6 +1,6 @@
 # Testing the sync workflow without merging to a protected branch
 
-The wrapper-sync workflow lives in this repo (`piyush-kukadiya/clevertap-wrapper-tooling`) but it operates on wrapper repos (`clevertap-react-native`, eventually `clevertap-flutter`, etc.) whose `develop` and `master` branches are protected. You can't merge a PR to `develop` without approval, and you can't get approval without showing the workflow works — chicken-and-egg.
+The wrapper-sync workflow lives in this repo (`CleverTap/clevertap-wrapper-tooling`) but it operates on wrapper repos (`clevertap-react-native`, eventually `clevertap-flutter`, etc.) whose `develop` and `master` branches are protected. You can't merge a PR to `develop` without approval, and you can't get approval without showing the workflow works — chicken-and-egg.
 
 This doc captures how we work around it: test on a personal fork of the wrapper repo, where every branch is unprotected. Once the workflow runs cleanly there, copy the workflow file to the real repo via a normal PR — by then it's a meaningful approval, not a blind one.
 

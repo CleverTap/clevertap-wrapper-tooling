@@ -3,7 +3,7 @@ name: sync-with-native-release
 # Reusable workflow that drives the end-to-end native-release -> wrapper-PR flow.
 #
 # Called from each wrapper repo's `.github/workflows/native-release-sync.yml`
-# via `uses: piyush-kukadiya/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1`.
+# via `uses: CleverTap/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1`.
 #
 # This is a thin CONDUCTOR. The reusable, wrapper-agnostic step groups live in
 # composite actions under `.github/actions/`; the wrapper-specific build lives
@@ -83,7 +83,7 @@ jobs:
       - name: Checkout tooling repo (this repo)
         uses: actions/checkout@v4
         with:
-          repository: piyush-kukadiya/clevertap-wrapper-tooling
+          repository: CleverTap/clevertap-wrapper-tooling
           path: tooling
 
       # ─── Shared setup (token, wrapper checkout, branch, Claude CLI) ────────

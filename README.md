@@ -62,7 +62,7 @@ on:
 
 jobs:
   sync:
-    uses: piyush-kukadiya/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1
+    uses: CleverTap/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1
     with:
       wrapper:         react-native
       android_module:  ${{ inputs.android_module != 'none' && inputs.android_module || '' }}
@@ -99,7 +99,7 @@ Outputs land in `~/.cache/clevertap-sdk-diff/<platform>-<module>-<old>-to-<new>/
 
 ## Ownership
 
-This repo lives under `piyush-kukadiya/clevertap-wrapper-tooling` temporarily. It will be transferred to `CleverTap/clevertap-wrapper-tooling` once org admin access is back. After the transfer, the only file that needs updating in wrapper repos is the `uses:` line in their dispatch workflow.
+This repo lives under `CleverTap/clevertap-wrapper-tooling` temporarily. It will be transferred to `CleverTap/clevertap-wrapper-tooling` once org admin access is back. After the transfer, the only file that needs updating in wrapper repos is the `uses:` line in their dispatch workflow.
 
 ## Versioning
 
