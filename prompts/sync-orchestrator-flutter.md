@@ -50,9 +50,21 @@ These hold the authoritative Flutter conventions. Read each in full before actin
      }
      ```
 
-   **Cross-check the changelog against the structural diff.** `intermediate_entries` lists every version strictly between the old pin and the new version when releases were skipped. Read the changelog narrative as a sanity check: if it announces a deprecation, default change, or behaviour change that is NOT visible in `api_diff` (a silent breaking change), call it out in your `skipped` rationale or add a `notes` field to your output. The changelog is also the source material for the human-readable `CHANGELOG.md` entry you write in step 7.
+   **The changelog is a SECOND detection source — not just narrative.** The diff tool is regex-based (~80% coverage) and can miss real API changes: multi-line signatures, `@JvmOverloads`, Kotlin default-param methods, etc. `intermediate_entries` lists every version strictly between the old pin and the new version when releases were skipped — read those too. You will reconcile the changelog against `api_diff` in **step 3b** to recover anything the structural diff missed. The changelog is also the source material for the human-readable `CHANGELOG.md` entry you write in step 7.
 
-3. **Walk the decision tree** from the `native-sdk-changelog-analysis` skill for every `api_diff` entry (added/removed/changed) and every build-manifest delta. Categorize and decide: `NEW_IMPLEMENTATION`, `UPDATE`, `NO_ACTION`, or `SKIP`. Where the tree branches to "DISCUSS with user", make the best-judgment call yourself (auto-apply mode) and record the rationale — do not stop.
+3. **Decide what to act on — from BOTH sources (union of `api_diff` and the changelog).**
+
+   **3a. From `api_diff`:** walk the decision tree from the `native-sdk-changelog-analysis` skill for every added/removed/changed entry and every build-manifest delta. Categorize and decide: `NEW_IMPLEMENTATION`, `UPDATE`, `NO_ACTION`, or `SKIP`. Where the tree branches to "DISCUSS with user", make the best-judgment call yourself (auto-apply mode) and record the rationale — do not stop.
+
+   **3b. Recall pass from the changelog (catch what the regex diff missed).** For every concrete public-API change the changelog names (in `target_entry` + `intermediate_entries`) that is NOT already covered by `api_diff`, you MUST **verify it against the new native source header before acting** — Android: `CleverTapAPI.java`; iOS: `CleverTap.h` (the same files the `native-sdk-changelog-analysis` skill's Step 4a uses; fetch from the SDK repo at the new version). Then:
+   - **New API** — symbol exists in source and not already wrapped → implement it (step 4). If you can't fully confirm the signature, implement best-effort and mark the type `(inferred)`.
+   - **Removed** — symbol is genuinely **absent** from the new source → remove/deprecate the wrapper method (this is a **MAJOR** bump).
+   - **Deprecated** — symbol is **present but marked deprecated** (`@Deprecated` / `__attribute__((deprecated))`) → KEEP the wrapper method, add a deprecation note to its doc comment. Do NOT delete it.
+   - **Signature changed** — source confirms a new signature → update the wrapper signature (**MAJOR** if a required parameter was added).
+   - **Behavior-only change** — no symbol added/removed/changed (same API, different runtime behavior) → there is nothing to implement; add it to `flagged_for_review`.
+   - **Cannot confirm in source** (symbol not found, or the changelog wording is ambiguous) → do NOT guess. Add it to `flagged_for_review` with what the changelog claimed.
+
+   Items you acted on in 3b go in `surfaced` (or `skipped`) like any other. Items you could NOT safely auto-apply — behavior-only changes and anything you couldn't confirm — go in `flagged_for_review` so a human reviews them. This is the safety net for the regex diff's blind spots; the changelog is authoritative for *what exists*, the source confirms *how*.
 
 4. **Apply each "surface" decision** by following the `api-wrapper-patterns` skill exactly, across all three layers:
    - **Dart** — `lib/clevertap_plugin.dart`: add the public `static Future<...>` method with a `///` doc comment. Keep Dart a thin pass-through (use `List?` for complex returns; no transformations in Dart).
@@ -119,6 +131,9 @@ At the end, write a structured JSON log to stdout (CI captures it to `claude-out
   ],
   "deferred": [
     {"name": "<method_name>", "rationale": "<one sentence>", "next_step": "<what a human should do>"}
+  ],
+  "flagged_for_review": [
+    {"type": "removal|deprecation|signature|behavior|unconfirmed", "name": "<api or feature>", "changelog_version": "<v>", "rationale": "<what the changelog said and why it was NOT auto-applied>"}
   ],
   "build_propagated": [
     {"change": "minSdk 21->23", "files": ["android/build.gradle"]}
