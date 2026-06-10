@@ -42,9 +42,19 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
    }
    ```
 
-   When the wrapper's current pin skipped versions (e.g., 8.1.0 pin and you're syncing to 8.3.0), `intermediate_entries` lists every version strictly between. Their changelog narrative is part of the cumulative diff you're applying — read them as sanity-check input too. If an intermediate version's changelog announced a deprecation or breaking change that's not visible in the structural diff (e.g., "behaviour of foo() changed silently"), call it out in your `skipped` rationale or escalate by including a `notes` field in your structured output.
+   When the wrapper's current pin skipped versions (e.g., 8.1.0 pin and you're syncing to 8.3.0), `intermediate_entries` lists every version strictly between. Their changelog narrative is part of the cumulative diff you're applying — read them too. **The changelog is a SECOND detection source, not just narrative:** the diff tool is regex-based (~80% coverage) and can miss real API changes (multi-line signatures, `@JvmOverloads`, Kotlin default-param methods, etc.). You'll reconcile the changelog against `api_diff` in **step 3b** to recover anything the structural diff missed.
 
 3. **Walk the triage tree** from the skill's `refs/triage-decision-tree.md` for every API diff entry (added/removed/changed) and every build-manifest delta.
+
+3b. **Recall pass from the changelog (catch what the regex diff missed).** For every concrete public-API change the changelog names (in `target_entry` + `intermediate_entries`) that is NOT already covered by `api_diff`, you MUST **verify it against the new native source header before acting** — Android: `CleverTapAPI.java`; iOS: `CleverTap.h` (the same files used for return-type verification; fetch at the new version). Then:
+   - **New API** — symbol exists in source and not already in the JS wrapper → surface it via the `clevertap-react-native-add-public-method` recipe (step 4). Mark a type `(inferred)` if you couldn't fully confirm it.
+   - **Removed** — symbol is genuinely **absent** from the new source → remove/deprecate the JS method + its native bridges (this is a **MAJOR** bump).
+   - **Deprecated** — symbol is **present but marked deprecated** (`@Deprecated` / `__attribute__((deprecated))`) → KEEP it, note the deprecation in docs. Do NOT delete it.
+   - **Signature changed** — source confirms a new signature → update the JS wrapper + both arch shims + the iOS `RCT_EXPORT_METHOD` (**MAJOR** if a required parameter was added).
+   - **Behavior-only change** — no symbol added/removed/changed (same API, different runtime behavior) → nothing to implement; add it to `flagged_for_review`.
+   - **Cannot confirm in source** (symbol not found, or ambiguous changelog wording) → do NOT guess. Add it to `flagged_for_review` with what the changelog claimed.
+
+   Items you acted on in 3b go in `surfaced` (or `skipped`) like any other. Items you could NOT safely auto-apply — behavior-only changes and anything unconfirmable — go in `flagged_for_review` so a human reviews them.
 
 4. **Apply each "surface" decision** by following the recipe in the `clevertap-react-native-add-public-method` skill: TS spec → JS wrapper → TS types → Android Impl + both arch shims → iOS RCT_EXPORT_METHOD → Example app → docs.
 
@@ -236,6 +246,9 @@ At the end, write a structured JSON log to stdout (CI captures it to `claude-out
   ],
   "deferred": [
     {"name": "<method_name>", "rationale": "<one sentence>", "next_step": "invoke clevertap-react-native-backfill-missing-coverage skill"}
+  ],
+  "flagged_for_review": [
+    {"type": "removal|deprecation|signature|behavior|unconfirmed", "name": "<api or feature>", "changelog_version": "<v>", "rationale": "<what the changelog said and why it was NOT auto-applied>"}
   ],
   "build_propagated": [
     {"change": "minSdk 21->23", "files": ["android/build.gradle"]}
