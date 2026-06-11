@@ -62,22 +62,34 @@ runs:
       run: |
         prompt="$(envsubst < "${{ inputs.prompt_path }}")"
         echo "Prompt length: ${#prompt} chars"
-        stderr_log="$(dirname "${{ inputs.output_file }}")/claude-stderr-${{ inputs.platform }}.log"
+        out_dir="$(dirname "${{ inputs.output_file }}")"
+        stderr_log="${out_dir}/claude-stderr-${{ inputs.platform }}.log"
+        stream_file="${out_dir}/claude-stream-${{ inputs.platform }}.jsonl"
+        # stream-json + --verbose emits the full turn-by-turn event stream (every
+        # Read/Edit/Write/Bash tool call, results, permission denials). Same model
+        # work / same cost as --output-format json — only the rendering differs.
         set +e
         claude -p "$prompt" \
                --model "${{ inputs.model }}" \
                --allowed-tools "${{ inputs.allowed_tools }}" \
-               --output-format json \
-               > "${{ inputs.output_file }}" \
+               --output-format stream-json --verbose \
+               > "$stream_file" \
                2> "$stderr_log"
         rc=$?
         set -e
+        # The final {"type":"result"} event is the same envelope the old
+        # --output-format json produced (.result, .total_cost_usd, .usage).
+        # Extract it so summarize/cost/pr-description keep working unchanged.
+        jq -c 'select(.type=="result")' "$stream_file" 2>/dev/null | tail -1 > "${{ inputs.output_file }}" || true
         if [ $rc -ne 0 ]; then
           echo "::error::claude exited with $rc"
           echo "::group::stderr"; cat "$stderr_log" || true; echo "::endgroup::"
-          echo "::group::stdout (truncated)"; head -100 "${{ inputs.output_file }}" || true; echo "::endgroup::"
+          echo "::group::stream (last 50 events)"; tail -50 "$stream_file" || true; echo "::endgroup::"
           exit $rc
         fi
+        echo "::group::${{ inputs.platform }} — Claude step trace (tools, files, denials)"
+        python3 "${{ inputs.tooling_root }}/scripts/trace-claude-actions.py" "$stream_file" || true
+        echo "::endgroup::"
         echo "${{ inputs.platform }} sync produced:"
         python3 "${{ inputs.tooling_root }}/scripts/summarize-claude-output.py" \
             "${{ inputs.output_file }}" || true

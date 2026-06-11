@@ -28,8 +28,8 @@ To support wrapper `X`, these five things must exist and agree:
 1. **Dispatch** `X-repo/.github/workflows/native-release-sync.yml` with `wrapper: X` and `uses: CleverTap/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1`.
 2. **Build composite** `.github/actions/build/X/action.yml` — installs the toolchain and builds the example app for android/ios; exposes `android_outcome` / `ios_outcome` outputs; **swallows build failures** (exit 0, report via output) so the conductor decides.
 3. **Conductor wiring** in `sync.yml`: `if: inputs.wrapper == 'X'` pre- and post-sync build steps, the prompt+allowlist branch in the `Resolve Claude config` step, and the artifact-upload paths.
-4. **Prompt** `prompts/sync-orchestrator-X.md`.
-5. **Domain skills** in `X-repo/.claude/skills/`.
+4. **Prompt** `prompts/sync-orchestrator-X.md` (incl. the mandatory Example-demo step 4b).
+5. **Domain skills** in `X-repo/.claude/skills/` — **committed to the `base_ref` branch the sync checks out** (incl. an example-app skill).
 
 ## Step-by-step (worked example: Cordova)
 
@@ -41,9 +41,9 @@ To support wrapper `X`, these five things must exist and agree:
 
 4. **Wire `sync.yml`.** Add the four `if: inputs.wrapper == 'cordova'` build steps (pre/post × … one composite call each, both platforms), a `cordova` branch in `Resolve Claude config` (set `prompt` = `prompts/sync-orchestrator-cordova.md` and the `allowed_tools` — include the diff tool + read/edit/git + Cordova's CLIs; exclude WebFetch/WebSearch), and the artifact-upload paths for Cordova's APK/app.
 
-5. **Prompt** `prompts/sync-orchestrator-cordova.md`. Clone `sync-orchestrator-flutter.md` and swap the wrapper-specific parts: the layer/recipe references (Cordova's JS plugin layer + Android/iOS bridges), the version-location list, and the example-app demo location. **Keep verbatim**: the "no human / proceed" override, the diff-tool-as-ground-truth instruction, the **step-3b changelog recall pass** (source-verify, then act; behavior-only/unconfirmable → `flagged_for_review`), and the structured-output schema incl. `flagged_for_review` and `native_changelogs`.
+5. **Prompt** `prompts/sync-orchestrator-cordova.md`. Clone `sync-orchestrator-flutter.md` and swap the wrapper-specific parts: the layer/recipe references (Cordova's JS plugin layer + Android/iOS bridges), the version-location list, and the example-app demo location. **Keep verbatim**: the "no human / proceed" override, the diff-tool-as-ground-truth instruction, the **step-3b changelog recall pass** (source-verify, then act; behavior-only/unconfirmable → `flagged_for_review`), the **explicit mandatory "add an Example-app demo for every surfaced API" step (4b)** with the example file required in each surfaced item's `files_touched`, and the structured-output schema incl. `flagged_for_review` and `native_changelogs`.
 
-6. **Domain skills** in the Cordova repo's `.claude/skills/`: a `version-detection` equivalent (where Cordova's version pins + own version live), an `api-wrapper-patterns` equivalent (how to add a method across Cordova's layers), an `example-app-patterns` equivalent, and a `changelog-generation` equivalent. The prompt references these by path.
+6. **Domain skills** in the Cordova repo's `.claude/skills/`: a `version-detection` equivalent (where Cordova's version pins + own version live), an `api-wrapper-patterns` equivalent (how to add a method across Cordova's layers), an `example-app` equivalent (how to add a runnable demo for each API — every surfaced method MUST get one), and a `changelog-generation` equivalent. **Commit these skills to the branch the sync checks out (`base_ref`, default `develop`)** — the headless run reads skills from the checked-out wrapper repo, NOT from anyone's laptop. If they're only local/untracked, Claude can't read them and silently falls back to the prompt text (this is exactly how RN's Example demos got skipped before they were committed).
 
 7. **Test on a fork.** Fork the wrapper repo; push the dispatch to a branch and make it the fork's **default branch** (so the `workflow_dispatch` UI/CLI sees it); ensure the fork has the branch the sync checks out (`develop` by default, or pass `base_ref`). Run **`skip_sync=true`** first (validates the build composite + wiring at $0 Claude). Then a full run. If the wrapper is already at the latest native version (no gap), create a **`develop`-based baseline with rolled-back pins** (and optionally hand-remove a couple of recently-added wrapper methods) and pass it via `base_ref`.
 
@@ -54,6 +54,8 @@ To support wrapper `X`, these five things must exist and agree:
 - **Generated/build files leak into PRs** — gitignore them in the wrapper repo (Flutter: `example/ios/Flutter/ephemeral/`).
 - **Unique `release_name` per run** — the conductor bails if `task/release_<name>` already exists.
 - **Headless Claude can't read files outside its cwd** — the PR-body prompt has the sync logs inlined for this reason; don't switch it back to path-passing.
+- **Wrapper skills must be committed to the `base_ref` branch** — the CI runner is a fresh VM and checks out the wrapper at `base_ref`; it never sees your laptop. If a referenced skill isn't in that checkout, Claude silently proceeds on prompt text alone (how RN's Example demos got skipped). Commit the skills, or keep the prompt self-contained for critical steps.
+- **Inspect the step trace** — runs upload `claude-stream-*.jsonl` (full tool-call transcript) and print a trace in the Actions log; check it to confirm Claude actually read the skills / touched the Example app. This is free (formatting only — no extra tokens).
 - **`gh run watch` is flaky on slow networks** — prefer a resilient poll loop.
 - **Soft cost cap is informational only** — it posts a PR comment over the threshold; it does NOT abort. Add a real guardrail (between-platform hard stop + `--max-turns`) if you need one.
 - **Cross-run shape variance** — independent Claude runs may produce slightly different (still-correct) wrapper shapes; the human PR review is the gate.

@@ -58,6 +58,8 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
 
 4. **Apply each "surface" decision** by following the recipe in the `clevertap-react-native-add-public-method` skill: TS spec → JS wrapper → TS types → Android Impl + both arch shims → iOS RCT_EXPORT_METHOD → Example app → docs.
 
+4b. **Add an Example-app demo for EVERY surfaced method — mandatory, do NOT skip.** Follow the `clevertap-react-native-example-app` skill. Concretely, for each `surfaced` item: (1) add an `Actions` key in `Example/app/constants.js`; (2) add a handler in `Example/app/app-utils.js` that calls `CleverTap.<method>(...)` with **concrete realistic values** (demo the callback form for optional-callback overloads) plus a `showToast` + `console.log`; (3) wire the action into the menu in `Example/app/App.js` so it runs on tap. The three Example files MUST appear in that item's `files_touched`. Do this even if the bridge method already existed from a prior sync — a surfaced API without an Example demo is incomplete.
+
 5. **Apply build-manifest propagations:**
    - If native `minSdk` went up and exceeds the RN SDK's current `minSdkVersion`, bump `android/build.gradle` accordingly.
    - If iOS deployment target moved, update `clevertap-react-native.podspec`'s `s.platform`.

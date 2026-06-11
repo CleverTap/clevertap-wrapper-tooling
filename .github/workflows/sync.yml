@@ -332,6 +332,10 @@ jobs:
           path: |
             claude-output-android.json
             claude-output-ios.json
+            claude-stream-android.jsonl
+            claude-stream-ios.jsonl
+            claude-stderr-android.log
+            claude-stderr-ios.log
           if-no-files-found: ignore
 
       # ─── Post-sync build artifacts (per wrapper) ──────────────────────────

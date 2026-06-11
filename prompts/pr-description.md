@@ -41,6 +41,7 @@ Pull these from either platform's claude-output JSON `wrapper_version` and `docs
 - **Docs updated:**
     <one bullet per entry in docs_updated, e.g. `\`docs/usage.md\` — entries added for: fetchInbox, pushDisplayUnitElementClickedEventForID`>
     <e.g. `\`docs/install.md\` — Android pin bumped to 8.3.0`>
+- **Example demos added:** <comma-separated surfaced methods whose `files_touched` includes the Example app file (Flutter `example/lib/main.dart`; RN `Example/app/*`)>. **If any surfaced method's `files_touched` has NO Example app file, list it here with a ⚠️ — e.g. `⚠️ <method> — no Example demo added`** so the reviewer catches the omission.
 
 ### Android sync (skip this section if Android wasn't synced)
 

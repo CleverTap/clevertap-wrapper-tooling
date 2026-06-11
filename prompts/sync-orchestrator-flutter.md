@@ -72,6 +72,8 @@ These hold the authoritative Flutter conventions. Read each in full before actin
    - **iOS** — `ios/Classes/CleverTapPlugin.m`: add the `handleMethodCall` branch and the implementation.
    - Use the type mapping in `api-wrapper-patterns` and `native-sdk-changelog-analysis/references/type-mapping.md`. Method-channel name and parameter names MUST match across all three layers.
 
+4b. **Add an Example-app demo for EVERY surfaced API — mandatory, do NOT skip.** Follow the `example-app-patterns` skill. Concretely, for each `surfaced` item, edit `example/lib/main.dart`: add a `_buildListTile("<Title>", <handler>, "<desc>")` entry inside the appropriate `_buildExpansionTile` section, and add the `<handler>` method that calls `CleverTapPlugin.<method>(...)` with **concrete realistic values** (a `showToast` + `print` for feedback). `example/lib/main.dart` MUST appear in that item's `files_touched`. Do this even if the method already existed from a prior sync — a surfaced API without an Example demo is incomplete.
+
 5. **Apply build-manifest propagations** (only if the diff shows them):
    - Android `minSdk` increased beyond the wrapper's current `minSdkVersion` → bump it in `android/build.gradle`.
    - iOS deployment target moved → update `ios/clevertap_plugin.podspec` (`s.platform`).
