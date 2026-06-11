@@ -110,7 +110,11 @@ jobs:
         shell: bash
         run: |
           DIFF_TOOL="${{ github.workspace }}/tooling/tools/diff_native_api.py"
-          COMMON="Read,Edit,Write,Glob,Grep,Bash(python3 ${DIFF_TOOL}:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"
+          # `Skill` lets Claude invoke the repo's .claude/skills (the intended
+          # mechanism); without it, skill invocations are DENIED and Claude
+          # silently falls back to prompt text (this is why RN skills/Example
+          # demos were skipped — caught by the step trace).
+          COMMON="Read,Edit,Write,Glob,Grep,Skill,Bash(python3 ${DIFF_TOOL}:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git ls-files:*),Bash(jq:*),Bash(cat:*),Bash(grep:*),Bash(sed:*),Bash(awk:*),Bash(head:*),Bash(tail:*),Bash(ls:*),Bash(echo:*),Bash(mkdir:*),Bash(find:*),Bash(wc:*)"
           if [ "${{ inputs.wrapper }}" = "flutter" ]; then
             echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator-flutter.md" >> "$GITHUB_OUTPUT"
             echo "tools=${COMMON},Bash(flutter:*),Bash(dart:*)" >> "$GITHUB_OUTPUT"
