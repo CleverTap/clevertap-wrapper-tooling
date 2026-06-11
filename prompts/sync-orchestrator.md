@@ -11,6 +11,10 @@ You have NO human in the loop. Do not ask questions. Make decisions per the skil
 - **Diff tool path:** ${DIFF_TOOL_PATH}
 - **Release date:** ${RELEASE_DATE} — human-readable date (e.g. "June 5 2026") used as the CHANGELOG heading date.
 
+## Skills — invoke on demand, at the step that needs them
+
+This repo's `.claude/skills/` are available. **Invoke the relevant skill via the Skill tool at the step that needs it** (progressive — don't pre-read them; load only what you're about to use), and follow it. Mapping: triage/recall → `clevertap-react-native-sync-with-native-release`; implementing a method → `clevertap-react-native-add-public-method`; the Example-app demo → `clevertap-react-native-example-app`. Platform deep-dives (`clevertap-react-native-android` / `-ios`) when you need bridge details. Use the skills for accuracy rather than guessing from surrounding code.
+
 ## What to do
 
 1. **Read the wrapper repo's current pin** for the requested platform/module. This is your `OLD_VERSION`.
@@ -227,8 +231,27 @@ When you encounter an overload pair in the diff, BOTH go in your `surfaced` list
 - **Do not invent APIs.** Only surface what's in the diff.
 - **Do not "improve" surrounding code.** Touch only files the recipe requires.
 - **Do not commit or push.** The wrapping CI handles git. You only modify the working tree.
-- **Cost-aware:** keep token usage reasonable. If you find yourself reading dozens of files, stop and emit what you have.
+- **Cost-aware:** keep token usage reasonable — but this NEVER means skipping required steps. "Cost-aware" applies to exploration/reading, not the mandatory edits in the completion gate below. Finish the job, then emit.
 - **Defer judiciously.** Defer ONLY when the JS API shape is genuinely ambiguous — complex struct callbacks with undocumented fields, builder patterns, multi-method interaction patterns. Do NOT defer cases where the decision tree gives a concrete answer (overloads → optional callback; async with completion handler → Promise<T> or optional callback). Defer is a fallback for genuinely hard cases, not a default for "this looks a bit different."
+
+## Before you emit — completion gate (MANDATORY)
+
+You are **NOT done** until every item below is true. **Before emitting the structured JSON, re-open each file and verify** — do not rely on memory or assume an earlier step did it. If anything is missing or partial, **do it now**, then re-check.
+
+For each method in your `surfaced` list:
+- [ ] Bridged across **JS** (`src/index.js`), **TS** spec/types, **Android** (`CleverTapModuleImpl` + both arch shims), **iOS** (`CleverTapReact.mm`).
+- [ ] **Example-app demo** added (`Example/app/constants.js` + `Example/app/app-utils.js` + `Example/app/App.js`).
+- [ ] Documented in `docs/usage.md`.
+
+Version bump — every one of these must be edited in lockstep with the new wrapper version:
+- [ ] `package.json` (`"version"`)
+- [ ] `android/build.gradle` (`versionName` **and** `versionCode`)
+- [ ] `src/index.js` (`libVersion` integer)
+
+Changelog:
+- [ ] `CHANGELOG.md` — a new dated entry.
+
+Only after all boxes are genuinely satisfied (verified by re-reading), emit the JSON below. No partial version bumps — every version location reflects the same new version.
 
 ## Output — required
 

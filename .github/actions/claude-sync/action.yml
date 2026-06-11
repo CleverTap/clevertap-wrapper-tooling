@@ -68,6 +68,9 @@ runs:
         # stream-json + --verbose emits the full turn-by-turn event stream (every
         # Read/Edit/Write/Bash tool call, results, permission denials). Same model
         # work / same cost as --output-format json — only the rendering differs.
+        # NOTE: do NOT add --bare here — it skips auto-discovery of the wrapper
+        # repo's .claude/skills, which the prompt relies on (step-anchored,
+        # on-demand skill invocation). Non-bare loads them like an interactive run.
         set +e
         claude -p "$prompt" \
                --model "${{ inputs.model }}" \

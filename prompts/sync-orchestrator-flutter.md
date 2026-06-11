@@ -11,15 +11,15 @@ You have NO human in the loop. Do not ask questions. The Flutter repo ships a se
 - **Diff tool path:** ${DIFF_TOOL_PATH}
 - **Release date:** ${RELEASE_DATE} — human-readable date (e.g. "9 June 2026") used as the CHANGELOG entry date.
 
-## Skills to load and follow (read them from the checked-out repo)
+## Skills — invoke on demand, at the step that needs them (do NOT pre-read them all)
 
-These hold the authoritative Flutter conventions. Read each in full before acting; follow them exactly rather than inferring from surrounding code.
+These skills hold the authoritative Flutter conventions and are available in this repo. **Invoke the relevant skill via the Skill tool at the step that needs it** (progressive — load only what you're about to use); do NOT read all of them upfront. Follow the invoked skill exactly rather than inferring from surrounding code. The step → skill mapping:
 
-- `.claude/skills/version-detection/SKILL.md` — the **7 version-file locations** and the `libVersion` integer conversion.
-- `.claude/skills/native-sdk-changelog-analysis/SKILL.md` — change categorization + the decision tree + type-compatibility checks. (In CI: SKIP its Step 1 WebFetch — you get the changelog from the diff tool instead — and SKIP its Step 6 "wait for user acknowledgment".)
-- `.claude/skills/api-wrapper-patterns/SKILL.md` — **MANDATORY** Dart/Android/iOS wrapper patterns, type mapping, and code style.
-- `.claude/skills/example-app-patterns/SKILL.md` — how to add a demo for each new API in `example/lib/main.dart`.
-- `.claude/skills/changelog-generation/SKILL.md` — exact `CHANGELOG.md` format, platform tags, and version-anchor link generation.
+- `native-sdk-changelog-analysis` — at triage/recall (steps 3/3b): change categorization + decision tree + type-compatibility. (In CI: SKIP its Step 1 WebFetch — the changelog comes from the diff tool — and SKIP its Step 6 "wait for user acknowledgment".)
+- `api-wrapper-patterns` — at implementation (step 4): **MANDATORY** Dart/Android/iOS wrapper patterns, type mapping, code style.
+- `example-app-patterns` — at the Example-demo step (4b): how to add a demo in `example/lib/main.dart`.
+- `version-detection` — at the version bump (step 6): the **7 version-file locations** + `libVersion` integer conversion.
+- `changelog-generation` — at the CHANGELOG step (step 7): exact `CHANGELOG.md` format, platform tags, version-anchor links.
 
 ## What to do
 
@@ -113,7 +113,27 @@ Native SDKs sometimes ship overloads (e.g. `foo()` and `foo(callback)`). Dart ha
 - **Do not invent APIs.** Only surface what's in `api_diff`.
 - **Do not "improve" surrounding code.** Touch only what the patterns require.
 - **Do not commit or push.** The wrapping CI handles git. You only modify the working tree.
-- **Cost-aware:** keep token usage reasonable. If you find yourself reading dozens of files, stop and emit what you have.
+- **Cost-aware:** keep token usage reasonable — but this NEVER means skipping required steps. "Cost-aware" applies to exploration/reading, not to the mandatory edits below. Finish the job, then emit.
+
+## Before you emit — completion gate (MANDATORY)
+
+You are **NOT done** until every item below is true. **Before emitting the structured JSON, re-open each file and verify** — do not rely on memory or assume an earlier step did it. If anything is missing or partial, **do it now**, then re-check.
+
+For each API in your `surfaced` list:
+- [ ] Implemented across **Dart** (`lib/clevertap_plugin.dart`), **Android** (`DartToNativePlatformCommunicator.kt`), **iOS** (`ios/Classes/CleverTapPlugin.m`).
+- [ ] **Example-app demo** added in `example/lib/main.dart`.
+
+Version bump (the **7 locations** from `version-detection`) — every one of these must be edited:
+- [ ] `pubspec.yaml` (`version:`)
+- [ ] `android/build.gradle` (top `version` **and** the `clevertap-android-sdk` pin)
+- [ ] `ios/clevertap_plugin.podspec` (`s.version` **and** the `CleverTap-iOS-SDK` pin)
+- [ ] `lib/clevertap_plugin.dart` (`libVersion` integer)
+- [ ] `README.md` (`clevertap_plugin: X.Y.Z`)
+
+Changelog & docs:
+- [ ] `CHANGELOG.md` — a new dated entry at the TOP.
+
+Only after all boxes are genuinely satisfied (verified by re-reading), emit the JSON below. If you bumped the wrapper version anywhere, ALL version locations must reflect the same new version (no partial bumps).
 
 ## Output — required
 

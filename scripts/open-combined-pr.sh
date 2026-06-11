@@ -97,6 +97,29 @@ if [ "${ANDROID_BUILD_OUTCOME:-}" = "failure" ] || [ "${IOS_BUILD_OUTCOME:-}" = 
 $body"
 fi
 
+# Deterministic completeness check (model-independent): a sync that opened a PR
+# should have updated the CHANGELOG and the wrapper's canonical version file. If
+# those aren't in the committed diff, the run likely stopped before finishing
+# (the version-bump / changelog tail steps). Flag it — non-blocking — so a
+# reviewer completes it rather than silently shipping a half-done sync.
+case "${WRAPPER}" in
+    flutter)       version_file="pubspec.yaml" ;;
+    react-native)  version_file="package.json" ;;
+    *)             version_file="" ;;
+esac
+changed="$(git diff --name-only "origin/${BASE_REF}...HEAD" 2>/dev/null || git show --name-only --format= HEAD 2>/dev/null)"
+missing=""
+printf '%s\n' "$changed" | grep -qx "CHANGELOG.md" || missing="${missing} CHANGELOG.md"
+if [ -n "$version_file" ]; then
+    printf '%s\n' "$changed" | grep -qx "$version_file" || missing="${missing} ${version_file}"
+fi
+if [ -n "$missing" ]; then
+    labels="${labels},incomplete-sync"
+    body="> ⚠️ **Incomplete sync — expected files were NOT updated:**${missing}. The sync likely stopped before finishing the version bump / changelog. Review and complete these before merge.
+
+$body"
+fi
+
 # Ensure the labels we want to use actually exist on the repo. `gh label
 # create --force` creates them if missing or updates color/desc if present
 # — idempotent. Without this, `gh pr create --label X` fails if X doesn't
@@ -107,8 +130,8 @@ fi
 # treats keys containing `-` as parameter expansion (e.g.
 # ${arr[auto-generated]} → looks for $auto and bails). Integer indices
 # don't have that problem.
-LABEL_NAMES=(auto-generated bug-fix-only new-api breaking-change build-failed)
-LABEL_COLORS=(ededed         0e8a16       1d76db  b60205          d93f0b)
+LABEL_NAMES=(auto-generated bug-fix-only new-api breaking-change build-failed incomplete-sync)
+LABEL_COLORS=(ededed         0e8a16       1d76db  b60205          d93f0b       e99695)
 for i in "${!LABEL_NAMES[@]}"; do
     name="${LABEL_NAMES[$i]}"
     color="${LABEL_COLORS[$i]}"
