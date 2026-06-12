@@ -46,7 +46,10 @@ Pull these from either platform's claude-output JSON `wrapper_version` and `docs
 ### Android sync (skip this section if Android wasn't synced)
 
 #### Surfaced (N)
-<one bullet per item: `✅ CleverTap.method() — rationale`>
+<one bullet per item: `✅ CleverTap.method() — rationale`. If the item has
+`"source_verified": false` (or the field is missing on a log that otherwise
+has it), append ` — ⚠️ NOT source-verified against the native SDK; reviewer
+must confirm the native symbol exists` to that bullet.>
 
 #### Skipped (N)
 <one bullet per item: `⏭️ method — rationale`>

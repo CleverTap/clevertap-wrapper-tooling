@@ -29,6 +29,10 @@ inputs:
   release_date:
     description: 'Human-readable release date for the CHANGELOG heading.'
     required: true
+  other_platform_syncing:
+    description: 'true when the OTHER platform''s sync step runs AFTER this one in the same workflow run (lets the prompt leave that platform''s bridge to its own sync).'
+    required: false
+    default: 'false'
   model:
     description: 'Claude model alias.'
     required: true
@@ -59,6 +63,7 @@ runs:
         NEW_VERSION: ${{ inputs.new_version }}
         DIFF_TOOL_PATH: ${{ inputs.diff_tool_path }}
         RELEASE_DATE: ${{ inputs.release_date }}
+        OTHER_PLATFORM_SYNCING: ${{ inputs.other_platform_syncing }}
       run: |
         prompt="$(envsubst < "${{ inputs.prompt_path }}")"
         echo "Prompt length: ${#prompt} chars"

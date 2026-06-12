@@ -60,7 +60,7 @@ This repo's `.claude/skills/` are available. **Invoke the relevant skill via the
 
    Items you acted on in 3b go in `surfaced` (or `skipped`) like any other. Items you could NOT safely auto-apply — behavior-only changes and anything unconfirmable — go in `flagged_for_review` so a human reviews them.
 
-4. **Apply each "surface" decision** by following the recipe in the `clevertap-react-native-add-public-method` skill: TS spec → JS wrapper → TS types → Android Impl + both arch shims → iOS RCT_EXPORT_METHOD → Example app → docs.
+4. **Apply each "surface" decision** by following the recipe in the `clevertap-react-native-add-public-method` skill: TS spec → JS wrapper → TS types → Android Impl + both arch shims → iOS RCT_EXPORT_METHOD → Example app → docs. **Before writing each native call, source-verify the exact symbol** (see "Source verification" below) — never copy a selector from this prompt's examples or from neighboring code without confirming it exists at the new version.
 
 4b. **Add an Example-app demo for EVERY surfaced method — mandatory, do NOT skip.** Follow the `clevertap-react-native-example-app` skill. Concretely, for each `surfaced` item: (1) add an `Actions` key in `Example/app/constants.js`; (2) add a handler in `Example/app/app-utils.js` that calls `CleverTap.<method>(...)` with **concrete realistic values** (demo the callback form for optional-callback overloads) plus a `showToast` + `console.log`; (3) wire the action into the menu in `Example/app/App.js` so it runs on tap. The three Example files MUST appear in that item's `files_touched`. Do this even if the bridge method already existed from a prior sync — a surfaced API without an Example demo is incomplete.
 
@@ -161,7 +161,9 @@ This repo's `.claude/skills/` are available. **Invoke the relevant skill via the
 
 The sync workflow runs **Sync Android FIRST**, then **Sync iOS** (sequential, not parallel). They share the runner's filesystem. If Sync Android added a method to the JS layer, that file ALREADY contains the method when Sync iOS runs.
 
-**Your job is the bridge for YOUR platform**, regardless of JS-layer state:
+**Other platform's sync runs after yours in this workflow: `${OTHER_PLATFORM_SYNCING}`**
+
+**Your PRIMARY job is the bridge for YOUR platform**, regardless of JS-layer state:
 
 - Sync Android adds: Android `CleverTapModuleImpl` + both arch shims + JS wrapper + TS spec/types + CHANGELOG.
 - Sync iOS adds: iOS `RCT_EXPORT_METHOD` in `CleverTapReact.mm` + CHANGELOG.
@@ -173,6 +175,13 @@ For every method in YOUR platform's diff, even if `src/index.js` already exports
 - **Android (you):** open `android/src/main/java/com/clevertap/react/CleverTapModuleImpl.java` AND both arch shims. For each ADDED method in the Android diff, confirm there's a matching public method on the impl AND `@ReactMethod` / `override` declarations on the two shims. If missing, add them.
 
 **Do not conclude "nothing to do" just because the JS layer already has the method. The JS wrapper alone is not a complete bridge — the per-platform implementation must exist on YOUR side.**
+
+### Completing the OTHER platform's bridge — verify-or-flag, never guess
+
+The regex diff sometimes catches an API on one platform but misses it on the other. A strict "stay in your lane" rule would leave the other platform's bridge missing (a JS method whose native side doesn't exist → broken TurboModule codegen / runtime error). So completing the other platform's bridge is ALLOWED, with rules:
+
+- **If `${OTHER_PLATFORM_SYNCING}` is `true`:** the other platform's sync runs AFTER you in this same workflow, with its own diff and its own native source. Do NOT add or edit its native bridge files — it will handle its side with better information than you have.
+- **If `${OTHER_PLATFORM_SYNCING}` is `false`:** you are the last (or only) sync in this run. If the shared JS layer references a method whose other-platform native implementation is missing, you may add it — but ONLY after source-verifying EVERY native symbol against the OTHER platform's cached native source (`~/.cache/clevertap-sdk-versions/...`, Read/Grep tools). If that platform's source is not in the cache at the relevant version, or the symbol cannot be confirmed, do NOT write it — add it to `flagged_for_review` (type `unconfirmed`) describing exactly which platform's bridge is missing which method. A flagged gap is recoverable; a guessed selector is a broken build (this exact failure has happened).
 
 ## Handling native method overloads
 
@@ -201,12 +210,17 @@ public void fetchInbox(Callback callback) {
 }
 ```
 
+⚠️ This shows the PATTERN, not authoritative method names. Verify every native method you call against the cached native source (see "Source verification" below) — the overload set may differ at your target version.
+
 Reference implementation (iOS .mm):
 
 ```objective-c
 RCT_EXPORT_METHOD(fetchInbox:(RCTResponseSenderBlock)callback) {
     if (callback == NULL) {
-        [[CleverTap sharedInstance] fetchInbox];
+        // The native header declares ONLY fetchInboxWithCallback: (callback is
+        // _Nullable) — there is NO no-arg fetchInbox selector. Verified in
+        // CleverTap+Inbox.h.
+        [[CleverTap sharedInstance] fetchInboxWithCallback:nil];
     } else {
         [[CleverTap sharedInstance] fetchInboxWithCallback:^(BOOL success) {
             callback(@[[NSNull null], @(success)]);
@@ -214,6 +228,8 @@ RCT_EXPORT_METHOD(fetchInbox:(RCTResponseSenderBlock)callback) {
     }
 }
 ```
+
+⚠️ Same warning: do NOT copy selectors from this example into code. Selectors MUST be confirmed in the native headers at the target version first (see "Source verification" below). A previous run copied a wrong selector from an example like this verbatim and broke the build.
 
 JS surface: `CleverTap.fetchInbox(callback?)` — host apps call it with or without a callback. Same shape on both platforms.
 
@@ -225,10 +241,32 @@ When you encounter an overload pair in the diff, BOTH go in your `surfaced` list
 - The native callback delivers a custom struct/object with multiple fields whose meaning isn't documented in the native header (genuinely ambiguous JS shape).
 - The native method takes a Builder, configuration object, or other multi-step setup that doesn't fit `(args..., optional callback)`.
 
+## Source verification — MANDATORY before writing ANY native call
+
+The single biggest source of broken builds is calling a native method/selector that doesn't exist. The rule:
+
+**Before you write ANY call to a native SDK symbol, confirm its exact name and signature in the cached native source at the NEW version.** The diff tool already downloaded it to `~/.cache/clevertap-sdk-versions/<repo>-<tag>/` (e.g. `clevertap-android-sdk-corev${NEW_VERSION}` / `clevertap-ios-sdk-${NEW_VERSION}`).
+
+- **Android:** check `clevertap-core/src/main/java/com/clevertap/android/sdk/CleverTapAPI.java` (or the class the diff names).
+- **iOS:** check `CleverTapSDK/CleverTap.h` and its category headers (`CleverTap+Inbox.h`, `CleverTap+DisplayUnit.h`, …). ObjC selectors include every part: `recordDisplayUnitElementClickedEventForID:additionalProperties:` is NOT `...ForID:withAdditionalProperties:`.
+
+**HOW to check — use the Read / Grep / Glob TOOLS, not Bash.** Bash commands that reference paths outside your working directory are DENIED by the permission system; the Read/Grep/Glob tools work on any absolute path. If a Bash grep on `~/.cache/...` gets denied, that is your cue to use the Grep tool instead — do NOT proceed unverified.
+
+This applies to:
+- every method you implement from the diff;
+- code you adapt from this prompt's reference examples (the examples show patterns, not authoritative names);
+- native calls in code that ALREADY exists in files you're completing (e.g. added by the other platform's sync earlier in this run) — if an existing call's symbol is absent from the native source, FIX it;
+- the other platform's bridge code, if you touch it (see Cross-platform coordination).
+
+**If you cannot find the symbol in the native source, do NOT write the call.** Put the item in `flagged_for_review` (type `unconfirmed`) with what you looked for and where. A flagged item is recoverable by the reviewer; a guessed selector is a broken build.
+
+Record the outcome per surfaced item via `"source_verified": true|false` in your structured output.
+
 ## Constraints — strict
 
 - **Do not ask questions.** Defer ambiguous items instead.
 - **Do not invent APIs.** Only surface what's in the diff.
+- **Never guess a native symbol.** Source verification (section above) is mandatory for every native call you write or complete.
 - **Do not "improve" surrounding code.** Touch only files the recipe requires.
 - **Do not commit or push.** The wrapping CI handles git. You only modify the working tree.
 - **Cost-aware:** keep token usage reasonable — but this NEVER means skipping required steps. "Cost-aware" applies to exploration/reading, not the mandatory edits in the completion gate below. Finish the job, then emit.
@@ -240,6 +278,7 @@ You are **NOT done** until every item below is true. **Before emitting the struc
 
 For each method in your `surfaced` list:
 - [ ] Bridged across **JS** (`src/index.js`), **TS** spec/types, **Android** (`CleverTapModuleImpl` + both arch shims), **iOS** (`CleverTapReact.mm`).
+- [ ] **Every native symbol it calls was source-verified** against the cached native source (`source_verified: true`) — or the item lives in `flagged_for_review`, not `surfaced`.
 - [ ] **Example-app demo** added (`Example/app/constants.js` + `Example/app/app-utils.js` + `Example/app/App.js`).
 - [ ] Documented in `docs/usage.md`.
 
@@ -264,7 +303,7 @@ At the end, write a structured JSON log to stdout (CI captures it to `claude-out
   "old_version": "<resolved>",
   "new_version": "${NEW_VERSION}",
   "surfaced": [
-    {"name": "<method_name>", "rationale": "<one sentence>", "files_touched": ["..."]}
+    {"name": "<method_name>", "rationale": "<one sentence>", "files_touched": ["..."], "source_verified": true}
   ],
   "skipped": [
     {"name": "<method_name>", "rationale": "<one sentence>"}

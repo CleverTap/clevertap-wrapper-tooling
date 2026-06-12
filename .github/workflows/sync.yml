@@ -169,6 +169,9 @@ jobs:
           platform:          android
           module:            ${{ inputs.android_module }}
           new_version:       ${{ inputs.android_version }}
+          # iOS sync runs AFTER Android in this job — tell the prompt so it
+          # leaves the iOS bridge to the iOS sync (verify-or-flag otherwise).
+          other_platform_syncing: ${{ inputs.ios_version != '' }}
           prompt_path:       ${{ steps.cc.outputs.prompt }}
           allowed_tools:     ${{ steps.cc.outputs.tools }}
           diff_tool_path:    ${{ github.workspace }}/tooling/tools/diff_native_api.py
@@ -187,6 +190,8 @@ jobs:
           platform:          ios
           module:            ${{ inputs.ios_module }}
           new_version:       ${{ inputs.ios_version }}
+          # iOS is the LAST sync in this job — no other platform runs after it.
+          other_platform_syncing: 'false'
           prompt_path:       ${{ steps.cc.outputs.prompt }}
           allowed_tools:     ${{ steps.cc.outputs.tools }}
           diff_tool_path:    ${{ github.workspace }}/tooling/tools/diff_native_api.py

@@ -66,7 +66,7 @@ These skills hold the authoritative Flutter conventions and are available in thi
 
    Items you acted on in 3b go in `surfaced` (or `skipped`) like any other. Items you could NOT safely auto-apply — behavior-only changes and anything you couldn't confirm — go in `flagged_for_review` so a human reviews them. This is the safety net for the regex diff's blind spots; the changelog is authoritative for *what exists*, the source confirms *how*.
 
-4. **Apply each "surface" decision** by following the `api-wrapper-patterns` skill exactly, across all three layers:
+4. **Apply each "surface" decision** by following the `api-wrapper-patterns` skill exactly, across all three layers. **Before writing each native call, source-verify the exact symbol** (see "Source verification" below) — never copy a method/selector name from examples or neighboring code without confirming it exists at the new version:
    - **Dart** — `lib/clevertap_plugin.dart`: add the public `static Future<...>` method with a `///` doc comment. Keep Dart a thin pass-through (use `List?` for complex returns; no transformations in Dart).
    - **Android** — `android/src/main/java/com/clevertap/clevertap_plugin/DartToNativePlatformCommunicator.kt`: add the method-channel case and the private implementation (and any conversion in `Utils.java` per the skill's Pattern 3).
    - **iOS** — `ios/Classes/CleverTapPlugin.m`: add the `handleMethodCall` branch and the implementation.
@@ -97,20 +97,50 @@ These skills hold the authoritative Flutter conventions and are available in thi
 
 The workflow runs **Sync Android FIRST, then Sync iOS** (sequential, sharing the runner's filesystem). The Dart layer (`lib/clevertap_plugin.dart`) is shared. If Sync Android already added a method to Dart, that file ALREADY contains it when Sync iOS runs.
 
-**Your job is the native bridge for YOUR platform, regardless of Dart-layer state.** For every method in YOUR platform's `api_diff`, even if the Dart method already exists (added by the previous sync), ensure YOUR platform's native implementation is present:
+**Other platform's sync runs after yours in this workflow: `${OTHER_PLATFORM_SYNCING}`**
+
+**Your PRIMARY job is the native bridge for YOUR platform, regardless of Dart-layer state.** For every method in YOUR platform's `api_diff`, even if the Dart method already exists (added by the previous sync), ensure YOUR platform's native implementation is present:
 - **iOS (you):** confirm a matching branch + implementation exists in `ios/Classes/CleverTapPlugin.m`. If missing, add it.
 - **Android (you):** confirm the method-channel case + implementation exists in `DartToNativePlatformCommunicator.kt`. If missing, add it.
 
 Do NOT conclude "nothing to do" just because the Dart layer already has the method — the Dart wrapper alone is not a complete bridge.
 
+### Completing the OTHER platform's bridge — verify-or-flag, never guess
+
+The regex diff sometimes catches an API on one platform but misses it on the other. A strict "stay in your lane" rule would leave the other platform's bridge missing (a Dart method whose native side doesn't exist → `MissingPluginException` at runtime). So completing the other platform's bridge is ALLOWED, with rules:
+
+- **If `${OTHER_PLATFORM_SYNCING}` is `true`:** the other platform's sync runs AFTER you in this same workflow, with its own diff and its own native source. Do NOT add or edit its native bridge files — it will handle its side with better information than you have.
+- **If `${OTHER_PLATFORM_SYNCING}` is `false`:** you are the last (or only) sync in this run. If the shared Dart layer references a method whose other-platform native implementation is missing, you may add it — but ONLY after source-verifying EVERY native symbol against the OTHER platform's cached native source (`~/.cache/clevertap-sdk-versions/...`, Read/Grep tools). If that platform's source is not in the cache at the relevant version, or the symbol cannot be confirmed, do NOT write it — add it to `flagged_for_review` (type `unconfirmed`) describing exactly which platform's bridge is missing which method. A flagged gap is recoverable; a guessed selector is a broken build (this exact failure has happened).
+
 ## Handling native method overloads
 
 Native SDKs sometimes ship overloads (e.g. `foo()` and `foo(callback)`). Dart has no overloading. The established pattern: **one Dart method with an optional named parameter / optional callback**; the native side null-checks and routes to the right overload. Surface BOTH overloads under a single Dart method — do NOT defer this; the pattern is established. Defer ONLY when the native callback delivers a custom struct with undocumented fields, or the API needs a builder / multi-step setup that doesn't fit `(args..., optional param)`.
+
+## Source verification — MANDATORY before writing ANY native call
+
+The single biggest source of broken builds is calling a native method/selector that doesn't exist. The rule:
+
+**Before you write ANY call to a native SDK symbol (in `DartToNativePlatformCommunicator.kt` or `CleverTapPlugin.m`), confirm its exact name and signature in the cached native source at the NEW version.** The diff tool already downloaded it to `~/.cache/clevertap-sdk-versions/<repo>-<tag>/` (e.g. `clevertap-android-sdk-corev${NEW_VERSION}` / `clevertap-ios-sdk-${NEW_VERSION}`).
+
+- **Android:** check `clevertap-core/src/main/java/com/clevertap/android/sdk/CleverTapAPI.java` (or the class the diff names).
+- **iOS:** check `CleverTapSDK/CleverTap.h` and its category headers (`CleverTap+Inbox.h`, `CleverTap+DisplayUnit.h`, …). ObjC selectors include every part: `recordDisplayUnitElementClickedEventForID:additionalProperties:` is NOT `...ForID:withAdditionalProperties:`.
+
+**HOW to check — use the Read / Grep / Glob TOOLS, not Bash.** Bash commands that reference paths outside your working directory are DENIED by the permission system; the Read/Grep/Glob tools work on any absolute path. If a Bash grep on `~/.cache/...` gets denied, that is your cue to use the Grep tool instead — do NOT proceed unverified.
+
+This applies to:
+- every method you implement from the diff or the recall pass (3b already requires this — this section extends it to ALL native calls, not just recall items);
+- native calls in code that ALREADY exists in files you're completing (e.g. added by the other platform's sync earlier in this run) — if an existing call's symbol is absent from the native source, FIX it;
+- the other platform's bridge code, if you touch it (see Cross-platform coordination).
+
+**If you cannot find the symbol in the native source, do NOT write the call.** Put the item in `flagged_for_review` (type `unconfirmed`) with what you looked for and where. A flagged item is recoverable by the reviewer; a guessed selector is a broken build.
+
+Record the outcome per surfaced item via `"source_verified": true|false` in your structured output.
 
 ## Constraints — strict
 
 - **Do not ask questions.** Auto-decide and record it.
 - **Do not invent APIs.** Only surface what's in `api_diff`.
+- **Never guess a native symbol.** Source verification (section above) is mandatory for every native call you write or complete.
 - **Do not "improve" surrounding code.** Touch only what the patterns require.
 - **Do not commit or push.** The wrapping CI handles git. You only modify the working tree.
 - **Cost-aware:** keep token usage reasonable — but this NEVER means skipping required steps. "Cost-aware" applies to exploration/reading, not to the mandatory edits below. Finish the job, then emit.
@@ -121,6 +151,7 @@ You are **NOT done** until every item below is true. **Before emitting the struc
 
 For each API in your `surfaced` list:
 - [ ] Implemented across **Dart** (`lib/clevertap_plugin.dart`), **Android** (`DartToNativePlatformCommunicator.kt`), **iOS** (`ios/Classes/CleverTapPlugin.m`).
+- [ ] **Every native symbol it calls was source-verified** against the cached native source (`source_verified: true`) — or the item lives in `flagged_for_review`, not `surfaced`.
 - [ ] **Example-app demo** added in `example/lib/main.dart`.
 
 Version bump (the **7 locations** from `version-detection`) — every one of these must be edited:
@@ -146,7 +177,7 @@ At the end, write a structured JSON log to stdout (CI captures it to `claude-out
   "old_version": "<resolved>",
   "new_version": "${NEW_VERSION}",
   "surfaced": [
-    {"name": "<method_name>", "rationale": "<one sentence>", "files_touched": ["..."]}
+    {"name": "<method_name>", "rationale": "<one sentence>", "files_touched": ["..."], "source_verified": true}
   ],
   "skipped": [
     {"name": "<method_name>", "rationale": "<one sentence>"}
