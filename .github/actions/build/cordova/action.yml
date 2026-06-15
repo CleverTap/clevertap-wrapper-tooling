@@ -61,10 +61,18 @@ runs:
         # + the local clevertap-cordova plugin via the file:../../.. dep).
         npm install --no-audit --no-fund --legacy-peer-deps
         # Regenerate the android platform so it reflects the current plugin.xml
-        # pins (the committed platform is stale). platform add restores plugins
-        # listed in package.json (incl. the local clevertap-cordova + its vars).
+        # pins (the committed platform is stale). Pin to the cordova-android
+        # major the example declares (^14): a bare `platform add` fetches the
+        # latest (15.x), whose CoreAndroid.java references VERSION_CODES.BAKLAVA
+        # (API 36) and won't compile against the installed SDK.
         cordova platform rm android || true
-        cordova platform add android
+        cordova platform add android@14
+        # Auto-restore of the local file:../../.. plugin is unreliable (cordova
+        # mis-resolves the relative path → "Invalid Plugin"). Add it explicitly;
+        # this also re-applies plugin.xml's frameworks (the current SDK pin).
+        cordova plugin add ../../.. \
+          --variable CLEVERTAP_ACCOUNT_ID=TEST-R55-999-486Z \
+          --variable CLEVERTAP_TOKEN=TEST-ccc-552 || true
         # The Google Services plugin (GradlePluginGoogleServicesEnabled=true)
         # needs a valid google-services.json; the one shipped in the plugin is a
         # 0-byte stub. Write a syntactically valid one whose package_name matches
@@ -105,9 +113,14 @@ runs:
         npm install --no-audit --no-fund --legacy-peer-deps
         # Regenerate the iOS platform so the Podfile/Pods re-resolve against the
         # current plugin.xml CleverTap-iOS-SDK pin (the committed Podfile pins a
-        # stale 5.1.2). platform add runs pod install via the cordova-ios hooks.
+        # stale 5.1.2). Pin to the cordova-ios major the example declares (^7).
         cordova platform rm ios || true
-        cordova platform add ios
+        cordova platform add ios@7
+        # Add the local plugin explicitly (auto-restore mis-resolves the
+        # file:../../.. path); this re-applies the podspec pin from plugin.xml.
+        cordova plugin add ../../.. \
+          --variable CLEVERTAP_ACCOUNT_ID=TEST-R55-999-486Z \
+          --variable CLEVERTAP_TOKEN=TEST-ccc-552 || true
         # Build unsigned for the simulator (no provisioning needed in CI).
         cordova build ios --emulator --debug
         rc=$?
