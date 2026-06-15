@@ -1,0 +1,115 @@
+name: 'Build Cordova example app'
+description: >
+  Cordova-specific build of the plain example app (Samples/Cordova/ExampleProject)
+  for one phase (pre-sync or post-sync). Builds Android and/or iOS depending on
+  which versions are set. Build failures are captured as per-platform outcome
+  outputs (the step itself does not fail) so the caller decides whether to abort
+  (pre-sync) or open the PR with a build-failed label (post-sync).
+
+  Platforms are REGENERATED (platform rm + add) rather than using the committed
+  ones, so the build reflects the (Claude-bumped) plugin.xml pins. The committed
+  platforms carry stale pins (Android 7.1.2 / iOS 5.1.2) and must not be trusted.
+
+inputs:
+  phase:
+    description: 'pre-sync or post-sync.'
+    required: true
+  android_version:
+    description: 'New Android version (empty skips the Android build).'
+    required: false
+    default: ''
+  ios_version:
+    description: 'New iOS version (empty skips the iOS build).'
+    required: false
+    default: ''
+  wrapper_path:
+    description: 'Path under the workspace where the wrapper repo is checked out.'
+    required: false
+    default: 'wrapper'
+
+outputs:
+  android_outcome:
+    description: 'success / failure / empty(skipped) for the Android build.'
+    value: ${{ steps.android.outputs.outcome }}
+  ios_outcome:
+    description: 'success / failure / empty(skipped) for the iOS build.'
+    value: ${{ steps.ios.outputs.outcome }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Java 17 (for Android build)
+      if: inputs.android_version != ''
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Install Cordova CLI
+      if: inputs.android_version != '' || inputs.ios_version != ''
+      shell: bash
+      run: npm install -g cordova
+
+    - name: Android build (${{ inputs.phase }})
+      id: android
+      if: inputs.android_version != ''
+      working-directory: ${{ inputs.wrapper_path }}/Samples/Cordova/ExampleProject
+      shell: bash
+      run: |
+        set +e
+        # Install the example's dev deps (cordova-android/ios platform packages
+        # + the local clevertap-cordova plugin via the file:../../.. dep).
+        npm install --no-audit --no-fund --legacy-peer-deps
+        # Regenerate the android platform so it reflects the current plugin.xml
+        # pins (the committed platform is stale). platform add restores plugins
+        # listed in package.json (incl. the local clevertap-cordova + its vars).
+        cordova platform rm android || true
+        cordova platform add android
+        # The Google Services plugin (GradlePluginGoogleServicesEnabled=true)
+        # needs a valid google-services.json; the one shipped in the plugin is a
+        # 0-byte stub. Write a syntactically valid one whose package_name matches
+        # the example's widget id (com.clevertap.example).
+        mkdir -p platforms/android/app
+        cat > platforms/android/app/google-services.json <<'EOF'
+        {
+          "project_info": {
+            "project_number": "000000000000",
+            "project_id": "stub-project-for-ci",
+            "storage_bucket": "stub-project-for-ci.appspot.com"
+          },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                "android_client_info": { "package_name": "com.clevertap.example" }
+              },
+              "api_key": [ { "current_key": "STUB_CI_KEY_NOT_FOR_USE" } ],
+              "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+            }
+          ],
+          "configuration_version": "1"
+        }
+        EOF
+        cordova build android --debug
+        rc=$?
+        if [ $rc -eq 0 ]; then echo "outcome=success" >> "$GITHUB_OUTPUT"; else echo "outcome=failure" >> "$GITHUB_OUTPUT"; echo "::warning::Cordova Android build (${{ inputs.phase }}) failed with $rc"; fi
+        exit 0
+
+    - name: iOS build (${{ inputs.phase }})
+      id: ios
+      if: inputs.ios_version != ''
+      working-directory: ${{ inputs.wrapper_path }}/Samples/Cordova/ExampleProject
+      shell: bash
+      run: |
+        set +e
+        npm install --no-audit --no-fund --legacy-peer-deps
+        # Regenerate the iOS platform so the Podfile/Pods re-resolve against the
+        # current plugin.xml CleverTap-iOS-SDK pin (the committed Podfile pins a
+        # stale 5.1.2). platform add runs pod install via the cordova-ios hooks.
+        cordova platform rm ios || true
+        cordova platform add ios
+        # Build unsigned for the simulator (no provisioning needed in CI).
+        cordova build ios --emulator --debug
+        rc=$?
+        if [ $rc -eq 0 ]; then echo "outcome=success" >> "$GITHUB_OUTPUT"; else echo "outcome=failure" >> "$GITHUB_OUTPUT"; echo "::warning::Cordova iOS build (${{ inputs.phase }}) failed with $rc"; fi
+        exit 0

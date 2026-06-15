@@ -118,6 +118,9 @@ jobs:
           if [ "${{ inputs.wrapper }}" = "flutter" ]; then
             echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator-flutter.md" >> "$GITHUB_OUTPUT"
             echo "tools=${COMMON},Bash(flutter:*),Bash(dart:*)" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.wrapper }}" = "cordova" ]; then
+            echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator-cordova.md" >> "$GITHUB_OUTPUT"
+            echo "tools=${COMMON},Bash(npm:*),Bash(cordova:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*)" >> "$GITHUB_OUTPUT"
           else
             echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator.md" >> "$GITHUB_OUTPUT"
             echo "tools=${COMMON},Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*)" >> "$GITHUB_OUTPUT"
@@ -147,11 +150,21 @@ jobs:
           ios_version:     ${{ inputs.ios_version }}
           wrapper_path:    wrapper
 
+      - name: Build pre-sync (cordova)
+        id: pre_cordova
+        if: inputs.wrapper == 'cordova'
+        uses: ./tooling/.github/actions/build/cordova
+        with:
+          phase:           pre-sync
+          android_version: ${{ inputs.android_version }}
+          ios_version:     ${{ inputs.ios_version }}
+          wrapper_path:    wrapper
+
       - name: Pre-sync build gate
         shell: bash
         run: |
-          A="${{ steps.pre_flutter.outputs.android_outcome || steps.pre_rn.outputs.android_outcome }}"
-          I="${{ steps.pre_flutter.outputs.ios_outcome || steps.pre_rn.outputs.ios_outcome }}"
+          A="${{ steps.pre_flutter.outputs.android_outcome || steps.pre_rn.outputs.android_outcome || steps.pre_cordova.outputs.android_outcome }}"
+          I="${{ steps.pre_flutter.outputs.ios_outcome || steps.pre_rn.outputs.ios_outcome || steps.pre_cordova.outputs.ios_outcome }}"
           echo "pre-sync outcomes: android='$A' ios='$I'"
           if [ "$A" = "failure" ] || [ "$I" = "failure" ]; then
             echo "::error::Pre-sync build failed — aborting before Claude sync (no Claude cost)."
@@ -226,13 +239,23 @@ jobs:
           ios_version:     ${{ inputs.ios_version }}
           wrapper_path:    wrapper
 
+      - name: Build post-sync (cordova)
+        id: post_cordova
+        if: inputs.wrapper == 'cordova' && !inputs.skip_sync
+        uses: ./tooling/.github/actions/build/cordova
+        with:
+          phase:           post-sync
+          android_version: ${{ inputs.android_version }}
+          ios_version:     ${{ inputs.ios_version }}
+          wrapper_path:    wrapper
+
       - name: Compute post-sync build outcomes
         id: outcomes
         if: always()
         shell: bash
         run: |
-          echo "android=${{ steps.post_flutter.outputs.android_outcome || steps.post_rn.outputs.android_outcome }}" >> "$GITHUB_OUTPUT"
-          echo "ios=${{ steps.post_flutter.outputs.ios_outcome || steps.post_rn.outputs.ios_outcome }}" >> "$GITHUB_OUTPUT"
+          echo "android=${{ steps.post_flutter.outputs.android_outcome || steps.post_rn.outputs.android_outcome || steps.post_cordova.outputs.android_outcome }}" >> "$GITHUB_OUTPUT"
+          echo "ios=${{ steps.post_flutter.outputs.ios_outcome || steps.post_rn.outputs.ios_outcome || steps.post_cordova.outputs.ios_outcome }}" >> "$GITHUB_OUTPUT"
 
       # ─── Commit, push, open PR ────────────────────────────────────────────
       # Run with !cancelled() so a failing post-sync build does NOT prevent the
@@ -364,6 +387,14 @@ jobs:
           path: wrapper/Example/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: warn
 
+      - name: Upload Android APK (cordova, post-sync)
+        if: always() && !inputs.skip_sync && inputs.android_version != '' && inputs.wrapper == 'cordova'
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-android-apk-post-sync
+          path: wrapper/Samples/Cordova/ExampleProject/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+
       - name: Upload iOS app (flutter, post-sync)
         if: always() && !inputs.skip_sync && inputs.ios_version != '' && inputs.wrapper == 'flutter'
         uses: actions/upload-artifact@v4
@@ -378,4 +409,12 @@ jobs:
         with:
           name: example-ios-app-post-sync
           path: wrapper/Example/ios/build/Build/Products/Debug-iphonesimulator/Example.app
+          if-no-files-found: ignore
+
+      - name: Upload iOS app (cordova, post-sync)
+        if: always() && !inputs.skip_sync && inputs.ios_version != '' && inputs.wrapper == 'cordova'
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-ios-app-post-sync
+          path: wrapper/Samples/Cordova/ExampleProject/platforms/ios/build/**/*.app
           if-no-files-found: ignore
