@@ -185,13 +185,25 @@ jobs:
         shell: bash
         run: |
           # Best-effort: .result should be the JSON object the prompt emitted.
-          added=$(jq -r 'try (.result | fromjson | .added[].name) catch empty' "$OUT" 2>/dev/null | sed 's/^/- /')
-          [ -z "$added" ] && added="(see the diff)"
+          sec() { jq -r "try (.result | fromjson | $1) catch empty" "$OUT" 2>/dev/null | sed 's/^/- /'; }
+          added=$(sec '.added[].name'); [ -z "$added" ] && added="_none_"
+          updated=$(sec '.updated[] | "\(.name): \(.from) → \(.to)"'); [ -z "$updated" ] && updated="_none_"
+          removed=$(sec '.removed[].name'); [ -z "$removed" ] && removed="_none_"
+          flagged=$(sec '.flagged_for_review[] | "\(.name) — \(.reason)"'); [ -z "$flagged" ] && flagged="_none_"
           body=$(cat <<EOF
-          Updates the CleverTap typings in \`awesome-cordova-plugins\` to expose the latest Cordova plugin methods (synced from \`${{ inputs.cordova_repo }}@${{ inputs.cordova_ref }}\`).
+          Updates the CleverTap typings in \`awesome-cordova-plugins\` to match the latest Cordova plugin API (synced from \`${{ inputs.cordova_repo }}@${{ inputs.cordova_ref }}\`).
 
-          **Methods added:**
+          **Added**
           $added
+
+          **Updated (signature)**
+          $updated
+
+          **Removed**
+          $removed
+
+          **Flagged for review**
+          $flagged
 
           Only \`src/@awesome-cordova-plugins/plugins/clevertap/index.ts\` is modified.
 
