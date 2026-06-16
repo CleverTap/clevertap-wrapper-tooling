@@ -34,7 +34,8 @@ You are updating the **Ionic / awesome-cordova-plugins TypeScript typings** for 
 Re-open `${TYPINGS_FILE}` and verify: every `added`/`updated` method is present and well-formed (JSDoc + `@Cordova()` + `Promise<any>` + `return;`) under a sensible section; every `removed` method is gone; and the imports / `@Plugin` / `@Injectable` / class declaration are unchanged.
 
 ## Output — required
-Write a single JSON object to stdout (CI captures it):
+Write **only** a single JSON object to stdout as your final message — no prose, no Markdown code
+fence around it, nothing before or after. (CI captures and parses it.)
 
 ```json
 {

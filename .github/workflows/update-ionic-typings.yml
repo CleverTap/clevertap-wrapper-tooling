@@ -180,45 +180,37 @@ jobs:
       - name: Open PR #1 into the typings repo
         if: steps.commit.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          OUT: ${{ github.workspace }}/typings-output.json
+          GH_TOKEN:     ${{ steps.app-token.outputs.token }}
+          CORDOVA_REPO: ${{ inputs.cordova_repo }}
+          CORDOVA_REF:  ${{ inputs.cordova_ref }}
+          TYPINGS_REPO: ${{ inputs.typings_repo }}
+          BRANCH:       ${{ steps.vars.outputs.branch }}
         shell: bash
         run: |
-          # Best-effort: .result should be the JSON object the prompt emitted.
-          sec() { jq -r "try (.result | fromjson | $1) catch empty" "$OUT" 2>/dev/null | sed 's/^/- /'; }
-          added=$(sec '.added[].name'); [ -z "$added" ] && added="_none_"
-          updated=$(sec '.updated[] | "\(.name): \(.from) → \(.to)"'); [ -z "$updated" ] && updated="_none_"
-          removed=$(sec '.removed[].name'); [ -z "$removed" ] && removed="_none_"
-          flagged=$(sec '.flagged_for_review[] | "\(.name) — \(.reason)"'); [ -z "$flagged" ] && flagged="_none_"
-          body=$(cat <<EOF
-          Updates the CleverTap typings in \`awesome-cordova-plugins\` to match the latest Cordova plugin API (synced from \`${{ inputs.cordova_repo }}@${{ inputs.cordova_ref }}\`).
-
-          **Added**
-          $added
-
-          **Updated (signature)**
-          $updated
-
-          **Removed**
-          $removed
-
-          **Flagged for review**
-          $flagged
-
-          Only \`src/@awesome-cordova-plugins/plugins/clevertap/index.ts\` is modified.
-
-          ---
-          ⚠️ **Next step (human):** after this merges, open the upstream PR from \`${{ inputs.typings_repo }}:${{ steps.vars.outputs.branch }}\` (or the base after merge) to \`danielsogl/awesome-cordova-plugins\` via "Contribute → Open pull request".
-
-          🤖 Generated with [Claude Code](https://claude.com/claude-code)
-          EOF
-          )
+          # Render the body from the structured summary inside the Claude result
+          # envelope (tolerant of a ```json fence / prose) + the envelope's
+          # authoritative cost/model/token fields.
+          python3 "${{ github.workspace }}/tooling/scripts/render-typings-pr-body.py" \
+            "${{ github.workspace }}/typings-output.json" > pr-body.md
           gh pr create \
             --repo "${{ inputs.typings_repo }}" \
             --base "${{ inputs.typings_base }}" \
             --head "${{ steps.vars.outputs.branch }}" \
             --title "feat(clevertap): support clevertap-cordova ${{ inputs.cordova_ref }}" \
-            --body "$body"
+            --body-file pr-body.md
+
+      # Reads the envelope's authoritative total_cost_usd + token usage and posts
+      # an informational PR comment on the typings PR if over the soft cap.
+      - name: Compute and report cost
+        if: always() && steps.commit.outputs.changed == 'true'
+        env:
+          ANDROID_OUTPUT: ${{ github.workspace }}/typings-output.json
+          IOS_OUTPUT:     ''
+          BRANCH:         ${{ steps.vars.outputs.branch }}
+          REPO:           ${{ inputs.typings_repo }}
+          GH_TOKEN:       ${{ steps.app-token.outputs.token }}
+          SOFT_CAP_USD:   '3'
+        run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
 
       - name: Upload logs
         if: always()
