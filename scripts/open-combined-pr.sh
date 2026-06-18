@@ -24,7 +24,9 @@ BASE_REF="${BASE_REF:-develop}"
 
 # Build PR title
 title="task: sync ${WRAPPER} with native release ${RELEASE_NAME}"
-if [ -n "${ANDROID_VERSION:-}" ] && [ -n "${IOS_VERSION:-}" ]; then
+if [ "${WRAPPER}" = "expo" ]; then
+    title="task: sync expo ← clevertap-react-native v${CLEVERTAP_RN_VERSION:-?} + Expo SDK ${EXPO_SDK_VERSION:-?} (${RELEASE_NAME})"
+elif [ -n "${ANDROID_VERSION:-}" ] && [ -n "${IOS_VERSION:-}" ]; then
     title="task: sync ${WRAPPER} ← Android ${ANDROID_MODULE}v${ANDROID_VERSION} + iOS ${IOS_VERSION} (${RELEASE_NAME})"
 elif [ -n "${ANDROID_VERSION:-}" ]; then
     title="task: sync ${WRAPPER} ← Android ${ANDROID_MODULE}v${ANDROID_VERSION} (${RELEASE_NAME})"
@@ -32,18 +34,29 @@ elif [ -n "${IOS_VERSION:-}" ]; then
     title="task: sync ${WRAPPER} ← iOS ${IOS_VERSION} (${RELEASE_NAME})"
 fi
 
-# Ask Claude to generate the PR body from the structured logs.
+# Ask Claude to generate the PR body from the structured logs. Expo has a
+# different output schema (version_bumps / integration_steps_changed rather than
+# surfaced methods) so it uses its own PR-body prompt.
 export WRAPPER ANDROID_MODULE ANDROID_VERSION IOS_MODULE IOS_VERSION RELEASE_NAME BRANCH
+export CLEVERTAP_RN_VERSION EXPO_SDK_VERSION
 
-prompt="$(envsubst < "${TOOLING_ROOT}/prompts/pr-description.md")"
+if [ "${WRAPPER}" = "expo" ]; then
+    prompt="$(envsubst < "${TOOLING_ROOT}/prompts/pr-description-expo.md")"
+    expo_log="$(cat "${EXPO_OUTPUT}" 2>/dev/null || true)"
+    prompt="${prompt}
 
-# Append the raw sync logs to the prompt so Claude doesn't need to read files
-# outside its working directory (the JSON envelopes live at the workspace root,
-# while this runs from the wrapper checkout). Appended AFTER envsubst so the
-# JSON's own `$` characters aren't mangled.
-android_log="$(cat "${ANDROID_OUTPUT}" 2>/dev/null || true)"
-ios_log="$(cat "${IOS_OUTPUT}" 2>/dev/null || true)"
-prompt="${prompt}
+=== BEGIN expo sync log (claude-output-expo.json) ===
+${expo_log}
+=== END expo sync log ==="
+else
+    prompt="$(envsubst < "${TOOLING_ROOT}/prompts/pr-description.md")"
+    # Append the raw sync logs to the prompt so Claude doesn't need to read files
+    # outside its working directory (the JSON envelopes live at the workspace root,
+    # while this runs from the wrapper checkout). Appended AFTER envsubst so the
+    # JSON's own `$` characters aren't mangled.
+    android_log="$(cat "${ANDROID_OUTPUT}" 2>/dev/null || true)"
+    ios_log="$(cat "${IOS_OUTPUT}" 2>/dev/null || true)"
+    prompt="${prompt}
 
 === BEGIN android sync log (claude-output-android.json) ===
 ${android_log}
@@ -52,6 +65,7 @@ ${android_log}
 === BEGIN ios sync log (claude-output-ios.json) ===
 ${ios_log}
 === END ios sync log ==="
+fi
 
 body=$(claude -p "$prompt" --model "$MODEL")
 
@@ -73,16 +87,39 @@ EOF
 )
 fi
 
-# Decide labels based on what was synced
+# Decide labels based on what was synced. The structured log lives inside the
+# CLI envelope's `.result` string, so we parse it with `fromjson?` (tolerates a
+# non-JSON result by yielding nothing → safe defaults).
 labels="auto-generated"
-if jq -e '.build_propagated[] | select(.change | test("minSdk|deployment_target"))' "${ANDROID_OUTPUT:-/dev/null}" "${IOS_OUTPUT:-/dev/null}" 2>/dev/null | head -1 | grep -q .; then
-    labels="${labels},breaking-change"
-fi
-if jq -e '.surfaced | length > 0' "${ANDROID_OUTPUT:-/dev/null}" 2>/dev/null | grep -q true \
-   || jq -e '.surfaced | length > 0' "${IOS_OUTPUT:-/dev/null}" 2>/dev/null | grep -q true; then
-    labels="${labels},new-api"
+if [ "${WRAPPER}" = "expo" ]; then
+    # Expo has no `surfaced` methods — derive labels from version_bumps /
+    # integration_steps_changed, and breaking-change from a major bump (or a
+    # propagated minSdk/deployment-target change). The structured log lives inside
+    # the envelope's `.result` as text that may be fenced/prose-wrapped, so a plain
+    # `fromjson` fails — extract the {...} block first, then parse that.
+    expo_struct=$(jq -r '.result // ""' "${EXPO_OUTPUT:-/dev/null}" 2>/dev/null \
+        | python3 -c "import sys,re; t=sys.stdin.read(); m=re.search(r'\{.*\}', t, re.DOTALL); sys.stdout.write(m.group(0) if m else '{}')" 2>/dev/null || echo '{}')
+    bump=$(printf '%s' "$expo_struct" | jq -r '.version_bump.bump_type // empty' 2>/dev/null || true)
+    nchanges=$(printf '%s' "$expo_struct" | jq -r '((.version_bumps // []) | length) + ((.integration_steps_changed // []) | length)' 2>/dev/null || echo 0)
+    breaking=$(printf '%s' "$expo_struct" | jq -r 'any((.build_propagated // [])[]; (.change // "") | test("minSdk|deployment_target"))' 2>/dev/null || echo false)
+    if [ "$bump" = "major" ] || [ "$breaking" = "true" ]; then
+        labels="${labels},breaking-change"
+    fi
+    if [ "${nchanges:-0}" -gt 0 ] 2>/dev/null; then
+        labels="${labels},new-api"
+    else
+        labels="${labels},bug-fix-only"
+    fi
 else
-    labels="${labels},bug-fix-only"
+    if jq -e '.build_propagated[] | select(.change | test("minSdk|deployment_target"))' "${ANDROID_OUTPUT:-/dev/null}" "${IOS_OUTPUT:-/dev/null}" 2>/dev/null | head -1 | grep -q .; then
+        labels="${labels},breaking-change"
+    fi
+    if jq -e '.surfaced | length > 0' "${ANDROID_OUTPUT:-/dev/null}" 2>/dev/null | grep -q true \
+       || jq -e '.surfaced | length > 0' "${IOS_OUTPUT:-/dev/null}" 2>/dev/null | grep -q true; then
+        labels="${labels},new-api"
+    else
+        labels="${labels},bug-fix-only"
+    fi
 fi
 
 # If either post-sync build failed, flag the PR so reviewers know to expect
@@ -105,6 +142,7 @@ fi
 case "${WRAPPER}" in
     flutter)       version_file="pubspec.yaml" ;;
     react-native)  version_file="package.json" ;;
+    expo)          version_file="package.json" ;;
     *)             version_file="" ;;
 esac
 changed="$(git diff --name-only "origin/${BASE_REF}...HEAD" 2>/dev/null || git show --name-only --format= HEAD 2>/dev/null)"

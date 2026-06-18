@@ -1,0 +1,27 @@
+%% claude-sync-dataflow: how the claude-sync composite action renders the prompt, runs headless Claude, and captures the result.
+%% Hand-edited source of truth; render via visual-explainer; never hand-edit generated HTML.
+flowchart TD
+    TPL["orchestrator prompt template<br/>(prompts/sync-orchestrator-&lt;wrapper&gt;.md)"]
+    ENV["env vars<br/>PLATFORM / MODULE / NEW_VERSION /<br/>DIFF_TOOL_PATH / RELEASE_DATE /<br/>OTHER_PLATFORM_SYNCING"]
+
+    TPL --> SUB["envsubst<br/>(fill the blanks)"]
+    ENV --> SUB
+    SUB --> RENDERED["rendered prompt<br/>(in-memory string)"]
+
+    RENDERED --> CLAUDE["claude -p<br/>--model / --allowed-tools<br/>--output-format stream-json --verbose"]
+    KEY["ANTHROPIC_API_KEY"] --> CLAUDE
+    ALLOW["tool allowlist<br/>(python3 pinned to diff tool,<br/>read-only git, build CLIs;<br/>WebFetch/WebSearch excluded)"] --> CLAUDE
+
+    CLAUDE -->|"mid-run tool call"| DIFFTOOL["python3 diff_native_api.py<br/>--platform --module --old --new"]
+    DIFFTOOL -->|"diff.json + diff.md"| CLAUDE
+    CLAUDE -->|"Read/Edit/Write/Skill/Bash<br/>against the wrapper checkout"| WRAP["wrapper repo edits"]
+
+    CLAUDE -->|"stdout: turn-by-turn events"| STREAM["claude-stream-&lt;platform&gt;.jsonl"]
+    CLAUDE -->|"stderr"| ERRLOG["claude-stderr-&lt;platform&gt;.log"]
+
+    STREAM --> JQ["jq select type==result | tail -1"]
+    JQ --> OUT["claude-output-&lt;platform&gt;.json<br/>(.result, .total_cost_usd, .usage)"]
+
+    STREAM --> TRACE["trace-claude-actions.py<br/>(tools, files, denials)"]
+    OUT --> SUMM["summarize-claude-output.py"]
+    OUT --> COST["compute-cost.sh + open-pr"]

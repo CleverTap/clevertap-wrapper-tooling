@@ -44,6 +44,10 @@ github app/
 .env.*
 !.env.example
 
+# Generated docs (visual-explainer HTML/slides). The Mermaid/Markdown sources
+# under docs/ are the source of truth; the HTML is regenerable build output.
+docs/_generated/
+
 # OS / misc
 Thumbs.db
 .directory

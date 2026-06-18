@@ -1,0 +1,24 @@
+%% bridge-layers-cordova: the action string is the contract — JS fans out to Android 3-touch and iOS 2-touch.
+%% Hand-edited source of truth; render via visual-explainer; never hand-edit generated HTML.
+flowchart TD
+    JS["JS — www/CleverTap.js<br/>cordova.exec(success, error,<br/>'CleverTapPlugin', '&lt;action&gt;', [args])"]
+
+    JS -->|"'&lt;action&gt;' string<br/>(shared contract)"| AND
+    JS -->|"'&lt;action&gt;' string<br/>(shared contract)"| IOS
+
+    subgraph AND["Android — 3 touches (2 files)"]
+        direction TB
+        A1["src/android/CleverTapFunction.java<br/>enum constant: &lt;ENUM&gt;('&lt;action&gt;')"]
+        A2["src/android/CleverTapPlugin.java<br/>case &lt;ENUM&gt;: in execute() switch"]
+        A3["src/android/CleverTapPlugin.java<br/>private void &lt;action&gt;(...) impl<br/>(source-verified cleverTap.&lt;x&gt;())"]
+        A1 -->|"fromString(action) maps to enum"| A2 --> A3
+    end
+
+    subgraph IOS["iOS — 2 touches"]
+        direction TB
+        I1["src/ios/CleverTapPlugin.h<br/>- (void)&lt;action&gt;:(CDVInvokedUrlCommand *)command;"]
+        I2["src/ios/CleverTapPlugin.m<br/>- (void)&lt;action&gt;: impl<br/>(auto-dispatched by selector;<br/>runInBackground; source-verified)"]
+        I1 -->|"selector must be declared in .h"| I2
+    end
+
+    A3 -.->|"action string must be<br/>identical on all 3 layers"| I2

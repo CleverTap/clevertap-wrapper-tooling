@@ -1,0 +1,17 @@
+%% diff-tool-pipeline: the 4 stages of diff_native_api.py (mirrors 20-walkthroughs/diff-native-api/00-overview.md, standalone).
+%% Hand-edited source of truth; render via visual-explainer; never hand-edit generated HTML.
+flowchart LR
+    IN["--platform / --module<br/>--old-version / --new-version"] --> S1
+    subgraph S1["1 ACQUIRE"]
+        A["get the SDK source for BOTH versions<br/>(local clone, cache, or GitHub tarball)"]
+    end
+    subgraph S2["2 EXTRACT"]
+        B["scan source for public methods<br/>(the 'surface') + build manifest"]
+    end
+    subgraph S3["3 DIFF"]
+        C["compare old vs new:<br/>added / removed / changed<br/>+ build diff + changelog block"]
+    end
+    subgraph S4["4 RENDER"]
+        D["write diff.json (programmatic)<br/>+ diff.md (human)"]
+    end
+    S1 --> S2 --> S3 --> S4 --> OUT["~/.cache/clevertap-sdk-diff/<br/>&lt;platform&gt;-&lt;module&gt;-&lt;old&gt;-to-&lt;new&gt;/"]

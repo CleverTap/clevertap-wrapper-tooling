@@ -1,0 +1,43 @@
+%% End-to-end sequence: one click -> one pull request.
+%% Source of truth (hand-edited). Render to HTML via visual-explainer; never hand-edit generated HTML.
+sequenceDiagram
+    autonumber
+    actor M as Maintainer
+    participant T as ① Trigger<br/>(wrapper repo<br/>native-release-sync.yml)
+    participant C as ② Conductor<br/>(hub: sync.yml)
+    participant D as ④ diff_native_api.py
+    participant K as ③ Brain<br/>(claude -p, headless)
+    participant G as GitHub
+
+    M->>T: Click "Run workflow" + pick versions
+    T->>C: Call reusable workflow (versions + secrets)
+
+    Note over C: Setup
+    C->>G: Mint bot token, checkout wrapper @develop, new branch
+
+    Note over C: Pre-sync build GATE
+    C->>C: Build example app (unchanged)
+    alt build already broken
+        C-->>M: Abort (no AI cost spent)
+    end
+
+    Note over C,K: Sync Android, then iOS
+    C->>K: Hand prompt (envsubst fills version blanks)
+    K->>D: Run diff tool (old vs new native version)
+    D-->>K: diff.json — added / removed / changed + build + changelog
+    K->>K: Triage each change: surface / skip / defer / flag
+    K->>K: Edit bridge code, bump versions, update changelog & examples
+    K-->>C: Structured summary (surfaced/skipped/…, cost)
+
+    Note over C: Post-sync build (verify edits compile)
+    C->>C: Rebuild example app with the edits
+    Note right of C: failure is non-fatal →<br/>PR gets a "build-failed" label
+
+    Note over C,G: Package the result
+    C->>G: Commit, push branch
+    C->>K: Ask Claude to write the PR description
+    C->>G: Open Pull Request (+ labels) against develop
+    C->>G: Post cost comment / Slack on failure
+
+    G-->>M: 📬 PR ready to review
+    M->>G: Review, approve, merge
