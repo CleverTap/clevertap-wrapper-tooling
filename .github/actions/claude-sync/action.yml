@@ -17,6 +17,14 @@ inputs:
   new_version:
     description: 'Target native version.'
     required: true
+  rn_version:
+    description: 'Expo only: target clevertap-react-native version (surfaced as $RN_VERSION for the prompt).'
+    required: false
+    default: ''
+  expo_sdk_version:
+    description: 'Expo only: target Expo SDK version (surfaced as $EXPO_SDK_VERSION for the prompt).'
+    required: false
+    default: ''
   prompt_path:
     description: 'Absolute path to the orchestrator prompt to render with envsubst.'
     required: true
@@ -58,9 +66,14 @@ runs:
       shell: bash
       env:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        # Lets tools/expo_diff.py authenticate the GitHub tags API (avoids the
+        # anonymous rate limit; needed to resolve combined tags like corevX_ptvY).
+        GITHUB_TOKEN: ${{ github.token }}
         PLATFORM: ${{ inputs.platform }}
         MODULE: ${{ inputs.module }}
         NEW_VERSION: ${{ inputs.new_version }}
+        RN_VERSION: ${{ inputs.rn_version }}
+        EXPO_SDK_VERSION: ${{ inputs.expo_sdk_version }}
         DIFF_TOOL_PATH: ${{ inputs.diff_tool_path }}
         RELEASE_DATE: ${{ inputs.release_date }}
         OTHER_PLATFORM_SYNCING: ${{ inputs.other_platform_syncing }}

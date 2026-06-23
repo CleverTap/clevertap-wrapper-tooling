@@ -42,6 +42,16 @@ on:
         required: false
         type: string
         default: ''
+      clevertap_rn_version:
+        description: 'Expo only: target clevertap-react-native version (e.g. 4.1.0).'
+        required: false
+        type: string
+        default: ''
+      expo_sdk_version:
+        description: 'Expo only: target Expo SDK version (e.g. 56).'
+        required: false
+        type: string
+        default: ''
       release_name:
         description: 'Branch suffix; defaults to today YYYY-MM-DD.'
         required: false
@@ -62,6 +72,16 @@ on:
         required: false
         type: boolean
         default: false
+      tooling_ref:
+        description: 'Ref of this tooling repo to check out for the composite actions/prompts/scripts/tools. Empty = default branch (aligned with @v1 in production). Set to a feature branch when testing changes to the hub itself.'
+        required: false
+        type: string
+        default: ''
+      runs_on:
+        description: 'Runner image. Default macos-14. Expo (RN 0.83 / Expo SDK 55+) needs macos-15 for a new-enough Xcode/Swift toolchain to build expo-modules-core.'
+        required: false
+        type: string
+        default: 'macos-14'
     secrets:
       app_id:
         required: true
@@ -70,12 +90,18 @@ on:
       anthropic_api_key:
         required: true
       slack_webhook_url:
-        required: true
+        # Optional: failure pings are best-effort. slack-notify.sh no-ops if empty,
+        # so a fork without this secret still runs cleanly.
+        required: false
 
 jobs:
   sync:
-    runs-on: macos-14
-    timeout-minutes: 90
+    runs-on: ${{ inputs.runs_on }}
+    # 180 (not 90): Expo does TWO full example-app compiles (pre-sync gate +
+    # post-sync verify) plus the Claude run; on macos-15 the iOS xcodebuild alone
+    # is ~30 min each, so 90 min cancelled mid-post-build. The other wrappers finish
+    # well under this — it's only a ceiling.
+    timeout-minutes: 180
 
     steps:
       # Checkout the tooling repo FIRST so its composite actions + scripts are
@@ -84,6 +110,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: CleverTap/clevertap-wrapper-tooling
+          # Check out the composite actions / prompts / scripts / tools at the same
+          # version as this workflow. `tooling_ref` is an explicit override (set it
+          # when testing hub changes from a feature branch); otherwise fall back to
+          # the reusable-workflow commit SHA, and finally to the default branch
+          # (aligned with @v1 in production). job_workflow_sha is unreliable for
+          # workflow_dispatch-triggered reusable calls, hence the explicit override.
+          ref: ${{ inputs.tooling_ref || github.job_workflow_sha }}
           path: tooling
 
       # ─── Shared setup (token, wrapper checkout, branch, Claude CLI) ────────
@@ -91,15 +124,18 @@ jobs:
         id: setup
         uses: ./tooling/.github/actions/setup
         with:
-          android_version: ${{ inputs.android_version }}
-          ios_version:     ${{ inputs.ios_version }}
-          android_module:  ${{ inputs.android_module }}
-          ios_module:      ${{ inputs.ios_module }}
-          release_name:    ${{ inputs.release_name }}
-          base_ref:        ${{ inputs.base_ref }}
-          app_id:          ${{ secrets.app_id }}
-          app_private_key: ${{ secrets.app_private_key }}
-          wrapper_path:    wrapper
+          wrapper:              ${{ inputs.wrapper }}
+          android_version:      ${{ inputs.android_version }}
+          ios_version:          ${{ inputs.ios_version }}
+          android_module:       ${{ inputs.android_module }}
+          ios_module:           ${{ inputs.ios_module }}
+          clevertap_rn_version: ${{ inputs.clevertap_rn_version }}
+          expo_sdk_version:     ${{ inputs.expo_sdk_version }}
+          release_name:         ${{ inputs.release_name }}
+          base_ref:             ${{ inputs.base_ref }}
+          app_id:               ${{ secrets.app_id }}
+          app_private_key:      ${{ secrets.app_private_key }}
+          wrapper_path:         wrapper
 
       # ─── Resolve wrapper-specific Claude config (prompt + tool allowlist) ──
       # The allowlist pins python3 to the diff tool (prevents `python3 -c`
@@ -109,7 +145,13 @@ jobs:
         id: cc
         shell: bash
         run: |
-          DIFF_TOOL="${{ github.workspace }}/tooling/tools/diff_native_api.py"
+          # The python pin is per-wrapper: native wrappers use diff_native_api.py;
+          # Expo uses expo_diff.py (the version/dependency fact-finder).
+          if [ "${{ inputs.wrapper }}" = "expo" ]; then
+            DIFF_TOOL="${{ github.workspace }}/tooling/tools/expo_diff.py"
+          else
+            DIFF_TOOL="${{ github.workspace }}/tooling/tools/diff_native_api.py"
+          fi
           # `Skill` lets Claude invoke the repo's .claude/skills (the intended
           # mechanism); without it, skill invocations are DENIED and Claude
           # silently falls back to prompt text (this is why RN skills/Example
@@ -121,6 +163,13 @@ jobs:
           elif [ "${{ inputs.wrapper }}" = "cordova" ]; then
             echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator-cordova.md" >> "$GITHUB_OUTPUT"
             echo "tools=${COMMON},Bash(npm:*),Bash(cordova:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*)" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.wrapper }}" = "expo" ]; then
+            # Expo is the ONLY wrapper allowed WebFetch — its brain reads native SDK
+            # docs + CleverTap docs + RN docs to reason about native integration STEPS
+            # (version numbers still come only from expo_diff.py). The prompt scopes
+            # WebFetch to known doc hosts. expo-module is the plugin's build CLI.
+            echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator-expo.md" >> "$GITHUB_OUTPUT"
+            echo "tools=${COMMON},WebFetch,Bash(npm:*),Bash(npx:*),Bash(yalc:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*),Bash(expo-module:*)" >> "$GITHUB_OUTPUT"
           else
             echo "prompt=${{ github.workspace }}/tooling/prompts/sync-orchestrator.md" >> "$GITHUB_OUTPUT"
             echo "tools=${COMMON},Bash(npm:*),Bash(yarn:*),Bash(./gradlew:*),Bash(pod:*),Bash(xcodebuild:*)" >> "$GITHUB_OUTPUT"
@@ -160,11 +209,19 @@ jobs:
           ios_version:     ${{ inputs.ios_version }}
           wrapper_path:    wrapper
 
+      - name: Build pre-sync (expo)
+        id: pre_expo
+        if: inputs.wrapper == 'expo'
+        uses: ./tooling/.github/actions/build/expo
+        with:
+          phase:        pre-sync
+          wrapper_path: wrapper
+
       - name: Pre-sync build gate
         shell: bash
         run: |
-          A="${{ steps.pre_flutter.outputs.android_outcome || steps.pre_rn.outputs.android_outcome || steps.pre_cordova.outputs.android_outcome }}"
-          I="${{ steps.pre_flutter.outputs.ios_outcome || steps.pre_rn.outputs.ios_outcome || steps.pre_cordova.outputs.ios_outcome }}"
+          A="${{ steps.pre_flutter.outputs.android_outcome || steps.pre_rn.outputs.android_outcome || steps.pre_cordova.outputs.android_outcome || steps.pre_expo.outputs.android_outcome }}"
+          I="${{ steps.pre_flutter.outputs.ios_outcome || steps.pre_rn.outputs.ios_outcome || steps.pre_cordova.outputs.ios_outcome || steps.pre_expo.outputs.ios_outcome }}"
           echo "pre-sync outcomes: android='$A' ios='$I'"
           if [ "$A" = "failure" ] || [ "$I" = "failure" ]; then
             echo "::error::Pre-sync build failed — aborting before Claude sync (no Claude cost)."
@@ -215,6 +272,31 @@ jobs:
           tooling_root:      ${{ github.workspace }}/tooling
           wrapper_path:      wrapper
 
+      # ─── EXPO: SINGLE COMBINED SYNC ───────────────────────────────────────
+      # The Expo plugin is one TypeScript codebase touching both platforms, so it
+      # runs ONE combined sync (not Android-then-iOS). platform/module/new_version
+      # are placeholders the Expo prompt ignores; it reads rn_version + expo_sdk_version.
+      - name: Sync Expo
+        id: sync_expo
+        if: inputs.wrapper == 'expo' && !inputs.skip_sync
+        uses: ./tooling/.github/actions/claude-sync
+        with:
+          platform:               expo
+          module:                 combined
+          new_version:            ${{ inputs.clevertap_rn_version }}
+          rn_version:             ${{ inputs.clevertap_rn_version }}
+          expo_sdk_version:       ${{ inputs.expo_sdk_version }}
+          other_platform_syncing: 'false'
+          prompt_path:            ${{ steps.cc.outputs.prompt }}
+          allowed_tools:          ${{ steps.cc.outputs.tools }}
+          diff_tool_path:         ${{ github.workspace }}/tooling/tools/expo_diff.py
+          release_date:           ${{ steps.setup.outputs.release_date }}
+          model:                  ${{ inputs.model }}
+          anthropic_api_key:      ${{ secrets.anthropic_api_key }}
+          output_file:            ${{ github.workspace }}/claude-output-expo.json
+          tooling_root:           ${{ github.workspace }}/tooling
+          wrapper_path:           wrapper
+
       # ─── POST-SYNC BUILD VERIFY ───────────────────────────────────────────
       # Re-build on Claude's edits. Implicit success() gating means these are
       # skipped if a Sync step failed. Build failures are captured (not fatal)
@@ -249,24 +331,52 @@ jobs:
           ios_version:     ${{ inputs.ios_version }}
           wrapper_path:    wrapper
 
+      - name: Build post-sync (expo)
+        id: post_expo
+        if: inputs.wrapper == 'expo' && !inputs.skip_sync
+        uses: ./tooling/.github/actions/build/expo
+        with:
+          phase:        post-sync
+          wrapper_path: wrapper
+
       - name: Compute post-sync build outcomes
         id: outcomes
         if: always()
         shell: bash
         run: |
-          echo "android=${{ steps.post_flutter.outputs.android_outcome || steps.post_rn.outputs.android_outcome || steps.post_cordova.outputs.android_outcome }}" >> "$GITHUB_OUTPUT"
-          echo "ios=${{ steps.post_flutter.outputs.ios_outcome || steps.post_rn.outputs.ios_outcome || steps.post_cordova.outputs.ios_outcome }}" >> "$GITHUB_OUTPUT"
+          echo "android=${{ steps.post_flutter.outputs.android_outcome || steps.post_rn.outputs.android_outcome || steps.post_cordova.outputs.android_outcome || steps.post_expo.outputs.android_outcome }}" >> "$GITHUB_OUTPUT"
+          echo "ios=${{ steps.post_flutter.outputs.ios_outcome || steps.post_rn.outputs.ios_outcome || steps.post_cordova.outputs.ios_outcome || steps.post_expo.outputs.ios_outcome }}" >> "$GITHUB_OUTPUT"
 
       # ─── Commit, push, open PR ────────────────────────────────────────────
       # Run with !cancelled() so a failing post-sync build does NOT prevent the
       # PR opening (it gets a build-failed label). Skip if Sync itself failed or
       # there were no edits.
+
+      # The App token minted in Setup has a 1-hour TTL. Long runs (Expo does two
+      # full builds + the Claude run, ~90 min) outlive it, so push/PR fail with
+      # "could not read Username". Mint a FRESH token here, right before push/PR.
+      - name: Refresh GitHub App token
+        id: token_refresh
+        if: ${{ !cancelled() }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          # Explicitly request the scopes push + PR creation need, so the token
+          # deterministically has them (and fails loudly at mint time if the App
+          # ever lacks them) instead of a confusing push 403.
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Commit changes
         if: |
           !cancelled()
           && steps.sync_android.outcome != 'failure'
           && steps.sync_ios.outcome != 'failure'
-          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
+          && steps.sync_expo.outcome != 'failure'
+          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success' || steps.sync_expo.outcome == 'success')
         working-directory: wrapper
         shell: bash
         run: |
@@ -294,9 +404,16 @@ jobs:
           && env.no_changes != 'true'
           && steps.sync_android.outcome != 'failure'
           && steps.sync_ios.outcome != 'failure'
-          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
+          && steps.sync_expo.outcome != 'failure'
+          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success' || steps.sync_expo.outcome == 'success')
         working-directory: wrapper
-        run: git push origin "${{ steps.setup.outputs.branch }}"
+        run: |
+          # actions/checkout persisted the ORIGINAL (now-expired) token as an
+          # http.extraheader, which overrides URL credentials — so we must clear it
+          # before pushing with the freshly-minted token. Token is a masked secret.
+          git config --unset-all 'http.https://github.com/.extraheader' 2>/dev/null || true
+          git remote set-url origin "https://x-access-token:${{ steps.token_refresh.outputs.token }}@github.com/${{ github.repository }}.git"
+          git push origin "${{ steps.setup.outputs.branch }}"
 
       - name: Open combined PR
         if: |
@@ -304,21 +421,25 @@ jobs:
           && env.no_changes != 'true'
           && steps.sync_android.outcome != 'failure'
           && steps.sync_ios.outcome != 'failure'
-          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
+          && steps.sync_expo.outcome != 'failure'
+          && (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success' || steps.sync_expo.outcome == 'success')
         uses: ./tooling/.github/actions/open-pr
         with:
-          gh_token:              ${{ steps.setup.outputs.token }}
+          gh_token:              ${{ steps.token_refresh.outputs.token }}
           anthropic_api_key:     ${{ secrets.anthropic_api_key }}
           wrapper:               ${{ inputs.wrapper }}
           android_module:        ${{ inputs.android_module }}
           android_version:       ${{ inputs.android_version }}
           ios_module:            ${{ inputs.ios_module }}
           ios_version:           ${{ inputs.ios_version }}
+          clevertap_rn_version:  ${{ inputs.clevertap_rn_version }}
+          expo_sdk_version:      ${{ inputs.expo_sdk_version }}
           release_name:          ${{ steps.setup.outputs.release_name }}
           branch:                ${{ steps.setup.outputs.branch }}
           base_ref:              ${{ inputs.base_ref }}
           android_output:        ${{ github.workspace }}/claude-output-android.json
           ios_output:            ${{ github.workspace }}/claude-output-ios.json
+          expo_output:           ${{ github.workspace }}/claude-output-expo.json
           android_build_outcome: ${{ steps.outcomes.outputs.android }}
           ios_build_outcome:     ${{ steps.outcomes.outputs.ios }}
           model:                 ${{ inputs.model }}
@@ -331,8 +452,9 @@ jobs:
         env:
           ANDROID_OUTPUT: ${{ github.workspace }}/claude-output-android.json
           IOS_OUTPUT:     ${{ github.workspace }}/claude-output-ios.json
+          EXPO_OUTPUT:    ${{ github.workspace }}/claude-output-expo.json
           BRANCH:         ${{ steps.setup.outputs.branch }}
-          GH_TOKEN:       ${{ steps.setup.outputs.token }}
+          GH_TOKEN:       ${{ steps.token_refresh.outputs.token }}
           REPO:           ${{ github.repository }}
           SOFT_CAP_USD:   '3'
         run: bash ${{ github.workspace }}/tooling/scripts/compute-cost.sh
@@ -364,10 +486,13 @@ jobs:
           path: |
             claude-output-android.json
             claude-output-ios.json
+            claude-output-expo.json
             claude-stream-android.jsonl
             claude-stream-ios.jsonl
+            claude-stream-expo.jsonl
             claude-stderr-android.log
             claude-stderr-ios.log
+            claude-stderr-expo.log
           if-no-files-found: ignore
 
       # ─── Post-sync build artifacts (per wrapper) ──────────────────────────
@@ -417,4 +542,20 @@ jobs:
         with:
           name: example-ios-app-post-sync
           path: wrapper/Samples/Cordova/ExampleProject/platforms/ios/build/**/*.app
+          if-no-files-found: ignore
+
+      - name: Upload Android APK (expo, post-sync)
+        if: always() && !inputs.skip_sync && inputs.wrapper == 'expo'
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-android-apk-post-sync
+          path: wrapper/CTExample/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+
+      - name: Upload iOS app (expo, post-sync)
+        if: always() && !inputs.skip_sync && inputs.wrapper == 'expo'
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-ios-app-post-sync
+          path: wrapper/CTExample/ios/build/Build/Products/Debug-iphonesimulator/CTExample.app
           if-no-files-found: ignore

@@ -30,6 +30,14 @@ inputs:
     description: 'iOS version that was synced (empty if iOS was skipped).'
     required: false
     default: ''
+  clevertap_rn_version:
+    description: 'Expo only: target clevertap-react-native version (for the PR title).'
+    required: false
+    default: ''
+  expo_sdk_version:
+    description: 'Expo only: target Expo SDK version (for the PR title).'
+    required: false
+    default: ''
   release_name:
     description: 'Resolved release name (used in the PR title).'
     required: true
@@ -46,6 +54,10 @@ inputs:
   ios_output:
     description: 'Path to claude-output-ios.json.'
     required: true
+  expo_output:
+    description: 'Path to claude-output-expo.json (Expo only).'
+    required: false
+    default: ''
   android_build_outcome:
     description: 'Post-sync Android build outcome (success/failure/empty).'
     required: false
@@ -79,11 +91,14 @@ runs:
         ANDROID_VERSION: ${{ inputs.android_version }}
         IOS_MODULE: ${{ inputs.ios_module }}
         IOS_VERSION: ${{ inputs.ios_version }}
+        CLEVERTAP_RN_VERSION: ${{ inputs.clevertap_rn_version }}
+        EXPO_SDK_VERSION: ${{ inputs.expo_sdk_version }}
         RELEASE_NAME: ${{ inputs.release_name }}
         BRANCH: ${{ inputs.branch }}
         BASE_REF: ${{ inputs.base_ref }}
         ANDROID_OUTPUT: ${{ inputs.android_output }}
         IOS_OUTPUT: ${{ inputs.ios_output }}
+        EXPO_OUTPUT: ${{ inputs.expo_output }}
         ANDROID_BUILD_OUTCOME: ${{ inputs.android_build_outcome }}
         IOS_BUILD_OUTCOME: ${{ inputs.ios_build_outcome }}
         MODEL: ${{ inputs.model }}

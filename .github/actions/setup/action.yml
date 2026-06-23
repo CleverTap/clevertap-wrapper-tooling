@@ -6,6 +6,10 @@ description: >
   release name/date, and the App token for downstream steps.
 
 inputs:
+  wrapper:
+    description: 'Wrapper name — selects the input-validation rules (expo uses RN/Expo versions, not android/ios).'
+    required: false
+    default: ''
   android_version:
     description: 'New Android version (empty skips Android).'
     required: false
@@ -20,6 +24,14 @@ inputs:
     default: ''
   ios_module:
     description: 'iOS module (required when ios_version is set).'
+    required: false
+    default: ''
+  clevertap_rn_version:
+    description: 'Expo only: target clevertap-react-native version.'
+    required: false
+    default: ''
+  expo_sdk_version:
+    description: 'Expo only: target Expo SDK version.'
     required: false
     default: ''
   release_name:
@@ -61,6 +73,15 @@ runs:
     - name: Sanity-check inputs
       shell: bash
       run: |
+        if [ "${{ inputs.wrapper }}" = "expo" ]; then
+          # Expo is driven by clevertap-react-native + Expo SDK versions, not the
+          # android/ios module/version pair. Require at least one of the two.
+          if [ -z "${{ inputs.clevertap_rn_version }}" ] && [ -z "${{ inputs.expo_sdk_version }}" ]; then
+            echo "::error::Expo sync needs clevertap_rn_version and/or expo_sdk_version. Both are empty."
+            exit 1
+          fi
+          exit 0
+        fi
         if [ -z "${{ inputs.android_version }}" ] && [ -z "${{ inputs.ios_version }}" ]; then
           echo "::error::Both android_version and ios_version are empty. Nothing to sync."
           exit 1
