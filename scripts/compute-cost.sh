@@ -19,7 +19,7 @@ total_tokens=0
 total_cost=0.0
 any_output=0
 
-for f in "${ANDROID_OUTPUT:-}" "${IOS_OUTPUT:-}"; do
+for f in "${ANDROID_OUTPUT:-}" "${IOS_OUTPUT:-}" "${EXPO_OUTPUT:-}"; do
     [ -z "$f" ] && continue
     [ -f "$f" ] || continue
     any_output=1
