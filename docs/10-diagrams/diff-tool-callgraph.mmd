@@ -1,0 +1,26 @@
+%% diff-tool-callgraph: real function call graph of diff_native_api.py from main().
+%% Hand-edited source of truth; render via visual-explainer; never hand-edit generated HTML.
+flowchart TD
+    MAIN["main()"]
+
+    MAIN --> ACQ["acquire_sources()"]
+    ACQ --> HASTAG["_git_has_tag()"]
+    ACQ --> ARCHIVE["_git_archive_to_dir()"]
+    ACQ --> DLEXT["_download_and_extract()"]
+
+    MAIN --> EXTRACT["extract_surface()"]
+    EXTRACT --> EJAVA["_extract_java()"]
+    EXTRACT --> EKOTLIN["_extract_kotlin()"]
+    EXTRACT --> EOBJC["_extract_objc_header()"]
+
+    MAIN --> DIFF["compute_diff()"]
+
+    MAIN --> ABM["extract_android_build_manifest()"]
+    MAIN --> IBM["extract_ios_build_manifest()"]
+    ABM --> CBD["compute_build_diff()"]
+    IBM --> CBD
+
+    MAIN --> CLOG["extract_changelog_block()"]
+
+    MAIN --> WRITE["write_outputs()"]
+    WRITE --> RENDER["_render_markdown()"]

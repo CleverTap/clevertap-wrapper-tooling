@@ -1,0 +1,55 @@
+%% diff-json-shape: the structure of diff.json the LLM consumes (keys verified in write_outputs / compute_diff / extract_changelog_block).
+%% Hand-edited source of truth; render via visual-explainer; never hand-edit generated HTML.
+classDiagram
+    class diff_json {
+        +meta
+        +added[]
+        +removed[]
+        +changed[]
+        +build
+        +changelog
+        +changelog_only_methods[]
+    }
+    class meta {
+        +platform
+        +module
+        +old_version
+        +new_version
+        +source_strategy
+        +symbols_old
+        +symbols_new
+        +old_source_path
+        +new_source_path
+    }
+    class Symbol {
+        +file
+        +kind
+        +name
+        +signature
+    }
+    class changed_entry {
+        +name
+        +old[] signatures
+        +new[] signatures
+        +files[]
+    }
+    class build {
+        +android (or null)
+        +ios (or null)
+    }
+    class changelog {
+        +target_version
+        +target_entry (text or null)
+        +intermediate_entries[]
+    }
+    class intermediate_entry {
+        +version
+        +entry
+    }
+
+    diff_json --> meta
+    diff_json --> Symbol : added[] / removed[]
+    diff_json --> changed_entry : changed[]
+    diff_json --> build
+    diff_json --> changelog
+    changelog --> intermediate_entry : intermediate_entries[]

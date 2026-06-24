@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retention — How to Lock It In</title>
+<!--
+  Aesthetic: BLUEPRINT — technical-drawing feel, faint grid background,
+  deep slate/blue field with a gold accent, monospace labels, precise borders.
+  Font pairing: IBM Plex Sans + IBM Plex Mono. Light-first, dark variant via prefers-color-scheme.
+  Style block shared verbatim with system-overview.html, plus content-component styles.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px clamp(20px, 5vw, 56px);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-nav a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    color: var(--text-dim);
+    margin: 0 auto 0 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10.5px;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+
+  /* ============ CONTENT ============ */
+  .kit-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px clamp(20px, 5vw, 56px) 20px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.07;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(19px, 2.2vw, 24px);
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    color: var(--text-bright);
+    margin: 48px 0 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 64px;
+  }
+  h2 .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 28px 0 6px;
+  }
+
+  p { margin: 12px 0; color: var(--text); }
+  .kit-content > p, .callout p, li { color: var(--text); }
+  .lead {
+    font-size: clamp(15.5px, 1vw + 12px, 18px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--text); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ============ CODE BLOCK CARD ============ */
+  .code-card {
+    margin: 18px 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+  }
+  .code-card__label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 14px;
+  }
+  .code-card pre {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+  .code-card pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 9px 9px 0;
+    background: var(--cbg, var(--blue-dim));
+    padding: 14px 18px;
+  }
+  .callout__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .callout__label::before {
+    content: ''; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--c, var(--blue));
+  }
+  .callout p { font-size: 14px; margin: 6px 0; }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--note  { --c: var(--gold);  --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ============ DATA TABLE ============ */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface2);
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  tbody tr:nth-child(even) { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ============ DETAILS (Check yourself / FAQ) ============ */
+  details.qa {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.qa[open] { border-color: var(--border-bright); }
+  details.qa > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 44px 13px 16px;
+    position: relative;
+    font-weight: 600;
+    color: var(--text-bright);
+    font-size: 14.5px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::after {
+    content: '+';
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 18px; line-height: 1;
+    color: var(--gold);
+    transition: transform 0.2s;
+  }
+  details.qa[open] > summary::after { content: '\2212'; }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+  }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+
+  .check-head {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin: 40px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .check-head::before { content: ''; width: 22px; height: 1px; background: var(--green); }
+
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px;
+    margin: 40px auto 0;
+    padding: 20px clamp(20px, 5vw, 56px) 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-foot a { text-decoration: none; color: var(--accent); }
+  .kit-foot a:hover { color: var(--text-bright); }
+  .kit-foot a.home { color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Retention · <b>How to Lock It In</b></span>
+  <a href="retention-flashcards.html">Next: Flashcards &#9654;</a>
+</nav>
+
+<main class="kit-content">
+  <div class="eyebrow animate">Retention · Overview</div>
+  <h1 class="animate" style="--i:1">Retention — make it stick (the "woken at 2am" test)</h1>
+
+  <p class="lead animate" style="--i:2">
+    You've read the kit. Reading is <strong>not</strong> learning. This folder is where you <em>prove</em> the system
+    lives in your head — so you could explain it cold, with no notes, even if someone woke you at 2am.
+  </p>
+
+  <p>
+    If the rest of the kit was the lecture, this is the <strong>lab and the exam</strong>. Everything here is built
+    on one research-backed idea: <strong>you remember what you struggle to recall, not what you re-read.</strong>
+  </p>
+
+  <h2>Why active recall (and not re-reading)</h2>
+
+  <p>
+    Re-reading feels productive — the words look familiar, so you assume you know them. That feeling is
+    a trap called <em>fluency</em>: recognizing a sentence is not the same as being able to produce it.
+  </p>
+
+  <p>
+    <strong>Active recall</strong> flips it. Instead of looking at the answer, you try to <em>retrieve</em> it from memory
+    first — and only then check. The effort of retrieval is what physically strengthens the memory. A
+    wrong attempt that you then correct beats a smooth re-read every time.
+  </p>
+
+  <p>
+    That is why <strong>every answer on every page here is hidden behind a fold</strong>:
+  </p>
+
+  <details class="qa">
+    <summary>Example — try to answer before you open this</summary>
+    <div class="qa-body">
+      <p>Opening this fold <em>after</em> you've guessed is the whole technique. If you opened it without guessing,
+         you got a re-read, not a recall. Close it, guess, then check.</p>
+    </div>
+  </details>
+
+  <div class="callout callout--note">
+    <div class="callout__label">Analogy</div>
+    <p>re-reading is watching someone else lift weights. Recall is lifting them yourself.
+       Only one builds muscle.</p>
+  </div>
+
+  <h2>Spaced repetition — beat the forgetting curve</h2>
+
+  <p>
+    You forget most of what you learn within days <em>unless you revisit it</em>. <strong>Spaced repetition</strong> means
+    reviewing material at growing intervals — right before you'd forget it. Each successful recall pushes
+    the next review further out.
+  </p>
+
+  <p>A simple schedule for this kit:</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>When</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr><td>Day 0</td><td>Read the kit; do the <a href="retention-flashcards.html">flashcards</a> once.</td></tr>
+        <tr><td>Day 1</td><td>Flashcards again (only the ones you missed need full attention).</td></tr>
+        <tr><td>Day 3</td><td>Flashcards + do 3–4 <a href="retention-exercises.html">exercises</a>.</td></tr>
+        <tr><td>Day 7</td><td>Flashcards + the rest of the exercises.</td></tr>
+        <tr><td>Day 14</td><td>The <a href="retention-capstone.html">capstone</a>, unaided.</td></tr>
+        <tr><td>Day 21</td><td>Re-attempt anything you fumbled; sign the <a href="retention-graduation-checklist.html">graduation checklist</a>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    The <code>flashcards.md</code> cards are written plain enough to <strong>paste straight into Anki</strong> (a free spaced-
+    repetition app) if you want the scheduling done for you. One card per glossary term and key concept.
+  </p>
+
+  <h2>The method, end to end</h2>
+
+  <div class="code-card">
+    <div class="code-card__label">the method, end to end</div>
+    <pre><code>read  &rarr;  self-test  &rarr;  flashcards  &rarr;  exercises  &rarr;  capstone  &rarr;  graduation
+(kit)   (the &#9989;       (retrieve      (do it,      (explain     (signed
+         blocks)      every term)    not read)    it back)     off)</code></pre>
+  </div>
+
+  <ol>
+    <li><strong>Read</strong> the kit in order (start at the <a href="primer-01-what-is-wrapper-sync.html">primer</a>).</li>
+    <li><strong>Self-test</strong> — every page already ends with a <code>&#9989; Check yourself</code> block. Answer <em>before</em> opening.</li>
+    <li><strong><a href="retention-flashcards.html">Flashcards</a></strong> — one Q&rarr;A fold per term/concept. Retrieve, then flip.</li>
+    <li><strong><a href="retention-exercises.html">Exercises</a></strong> — hands-on drills: trace a run, decode a regex, gate an <code>if:</code>,
+        spot a bug. <em>Doing</em>, not reading.</li>
+    <li><strong><a href="retention-capstone.html">Capstone</a></strong> — the "explain it back" assessment, completed unaided.</li>
+    <li><strong><a href="retention-graduation-checklist.html">Graduation checklist</a></strong> — the concrete bar to be signed off.</li>
+  </ol>
+
+  <h2>How to use each file</h2>
+
+  <ul>
+    <li><strong>Flashcards:</strong> cover the answer. Say or write your answer <em>out loud / on paper</em>. Then open the
+        fold. If you were wrong or vague, that card comes back sooner.</li>
+    <li><strong>Exercises:</strong> actually do the task (open the real file, run the real command) before peeking at
+        the hint. Open the solution last, to grade yourself.</li>
+    <li><strong>Capstone:</strong> no notes, no folds open. Write your answers first, then check.</li>
+  </ul>
+
+  <div class="callout callout--info">
+    <div class="callout__label">The one rule</div>
+    <p><strong>Guess before you peek.</strong> A fold you open without first attempting the answer taught you nothing.</p>
+  </div>
+
+  <p>
+    <strong>Next:</strong> <a href="retention-flashcards.html">flashcards.md — one card per term, retrieve before you flip &rarr;</a>
+  </p>
+</main>
+
+<footer class="kit-foot">
+  <a href="trouble-05-faq.html">&#9664; Troubleshooting — FAQ</a>
+  <a class="home" href="index.html">&#8962; Kit home</a>
+  <a href="retention-flashcards.html">Flashcards &#9654;</a>
+</footer>
+
+</body>
+</html>

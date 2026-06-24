@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Troubleshooting — Cost & Caps</title>
+<!--
+  Aesthetic: BLUEPRINT — technical-drawing feel, faint grid background,
+  deep slate/blue field with a gold accent, monospace labels, precise borders.
+  Font pairing: IBM Plex Sans + IBM Plex Mono. Light-first, dark variant via prefers-color-scheme.
+  Style block shared verbatim with system-overview.html, plus content-component styles.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px clamp(20px, 5vw, 56px);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-nav a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    color: var(--text-dim);
+    margin: 0 auto 0 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10.5px;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+
+  /* ============ CONTENT ============ */
+  .kit-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px clamp(20px, 5vw, 56px) 20px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.07;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(19px, 2.2vw, 24px);
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    color: var(--text-bright);
+    margin: 48px 0 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 64px;
+  }
+  h2 .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 28px 0 6px;
+  }
+
+  p { margin: 12px 0; color: var(--text); }
+  .kit-content > p, .callout p, li { color: var(--text); }
+  .lead {
+    font-size: clamp(15.5px, 1vw + 12px, 18px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--text); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ============ CODE BLOCK CARD ============ */
+  .code-card {
+    margin: 18px 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+  }
+  .code-card__label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 14px;
+  }
+  .code-card pre {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+  .code-card pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 9px 9px 0;
+    background: var(--cbg, var(--blue-dim));
+    padding: 14px 18px;
+  }
+  .callout__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .callout__label::before {
+    content: ''; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--c, var(--blue));
+  }
+  .callout p { font-size: 14px; margin: 6px 0; }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--note  { --c: var(--gold);  --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ============ DATA TABLE ============ */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface2);
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  tbody tr:nth-child(even) { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ============ DETAILS (Check yourself / FAQ) ============ */
+  details.qa {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.qa[open] { border-color: var(--border-bright); }
+  details.qa > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 44px 13px 16px;
+    position: relative;
+    font-weight: 600;
+    color: var(--text-bright);
+    font-size: 14.5px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::after {
+    content: '+';
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 18px; line-height: 1;
+    color: var(--gold);
+    transition: transform 0.2s;
+  }
+  details.qa[open] > summary::after { content: '\2212'; }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+  }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+
+  .check-head {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin: 40px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .check-head::before { content: ''; width: 22px; height: 1px; background: var(--green); }
+
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px;
+    margin: 40px auto 0;
+    padding: 20px clamp(20px, 5vw, 56px) 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-foot a { text-decoration: none; color: var(--accent); }
+  .kit-foot a:hover { color: var(--text-bright); }
+  .kit-foot a.home { color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Troubleshooting · <b>Cost &amp; Caps</b></span>
+  <a href="trouble-05-faq.html">Next: FAQ &#9654;</a>
+</nav>
+
+<main class="kit-content">
+  <div class="eyebrow animate">Troubleshooting · 04</div>
+  <h1 class="animate" style="--i:1">Cost and caps</h1>
+  <p class="lead animate" style="--i:2">
+    The AI run costs real money. This page explains the <strong>soft cap</strong>, why it doesn't stop a run, and
+    where the <em>authoritative</em> cost number comes from.
+  </p>
+
+  <h2>The soft cap (~$3): a comment, not a brake</h2>
+  <p>Every run sums up its AI cost. There's a <strong>soft cap</strong> set around <strong>$3</strong>. If a run exceeds it, the
+     workflow <strong>posts an informational PR comment</strong> flagging the overage.</p>
+  <p>The key word is <strong>soft</strong>: crossing the cap does <strong>not</strong> stop the run. The reasoning &mdash; you don't want
+     to fail <em>mid-PR-creation</em> and leave a half-finished mess. Far better to let the run finish, open the
+     PR, and post a "this cost more than usual" note for a human to notice.</p>
+  <div class="callout callout--info">
+    <div class="callout__label">Beginner sidebar · soft cap vs. hard cap</div>
+    <p>A <strong>soft cap</strong> reports and keeps going. A <strong>hard cap</strong> would abort. This system uses a soft cap on
+       purpose. (A future true guardrail might add a between-platform hard stop + a <code>--max-turns</code> limit on
+       the sync calls &mdash; that's noted as a possible enhancement, not current behavior.) See
+       <a href="glossary.html">Glossary &rarr; Soft cap</a>.</p>
+  </div>
+
+  <h2>What a normal run costs</h2>
+  <p>Real runs have typically cost on the order of a <strong>couple of dollars</strong> &mdash; well under the $3 cap. The
+     cap was set low <em>on purpose</em> so it catches anomalies (a runaway loop, an unusually large diff)
+     without firing on ordinary runs. If you see a cost far above a few dollars, it's worth a look.</p>
+  <div class="callout callout--note">
+    <div class="callout__label">Analogy</div>
+    <p>The soft cap is a <strong>dashboard warning light</strong>, not a kill switch. It says "hey,
+       you're burning more fuel than usual" &mdash; but it lets you finish the trip and decide for yourself.</p>
+  </div>
+
+  <h2>Where the <em>authoritative</em> cost comes from</h2>
+  <p>This matters if you're reading the numbers yourself. Claude sometimes writes cost/token estimates
+     <em>inside its own prose</em> &mdash; <strong>don't trust those.</strong> The reliable figures come from the <strong>CLI envelope</strong>:</p>
+  <ul>
+    <li><code>total_cost_usd</code> &mdash; the authoritative dollar cost.</li>
+    <li><code>usage.input_tokens</code> / <code>usage.output_tokens</code> &mdash; the authoritative token counts.</li>
+  </ul>
+  <p>These live in the JSON envelope the CLI wraps around the response, not in the text Claude generated.
+     The cost script reads the envelope fields for exactly this reason.</p>
+  <div class="callout callout--info">
+    <div class="callout__label">Beginner sidebar · the CLI envelope vs. the result text</div>
+    <p>When Claude runs headless with JSON output, the CLI wraps the answer in an <strong>envelope</strong> with
+       trustworthy metadata (<code>total_cost_usd</code>, <code>usage.*</code>). Inside that envelope, <code>.result</code> holds Claude's
+       own text &mdash; which may contain self-reported numbers that drift. Read the envelope, not the prose.
+       See <a href="glossary.html">Glossary &rarr; stream-json / jq</a>.</p>
+  </div>
+
+  <h2>A note on which models run</h2>
+  <p>Even when you pick <code>sonnet</code> (the default), a run uses <strong>more than one model</strong>: the lead reasoning
+     model you chose, plus a cheaper model for small auxiliary calls. The per-model split shows up in the
+     run's output under a <code>modelUsage</code> block, and the cost report <strong>sums all models</strong> correctly &mdash; so the
+     total you see already includes everything.</p>
+
+  <div class="check-head">Check yourself</div>
+
+  <details class="qa">
+    <summary>1. A run exceeds the $3 soft cap. What happens to the run?</summary>
+    <div class="qa-body">
+      <p>Nothing stops it. The cap is <strong>soft</strong> &mdash; it posts an informational PR comment but lets the run finish
+         and open the PR. Failing mid-PR-creation would be worse than a slightly costly run.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>2. Where's the trustworthy cost figure — the number Claude wrote, or somewhere else?</summary>
+    <div class="qa-body">
+      <p>Somewhere else: the <strong>CLI envelope's <code>total_cost_usd</code></strong> (and <code>usage.*</code> for tokens). Numbers Claude
+         writes inside its own prose can drift and aren't authoritative.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>3. You picked <code>sonnet</code>. Does the cost include only Sonnet?</summary>
+    <div class="qa-body">
+      <p>No &mdash; a run also uses a cheaper model for auxiliary calls. The <code>modelUsage</code> block shows the split, and
+         the cost report <strong>sums all models</strong>, so the reported total is complete.</p>
+    </div>
+  </details>
+</main>
+
+<footer class="kit-foot">
+  <a href="trouble-03-source-verification-failures.html">&#9664; Source Verification</a>
+  <a class="home" href="index.html">&#8962; Kit home</a>
+  <a href="trouble-05-faq.html">FAQ &#9654;</a>
+</footer>
+
+</body>
+</html>

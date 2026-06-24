@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Start Here — Wrapper-Sync Onboarding Kit</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+  }
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 300;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 40px;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-nav a { color: var(--text-dim); text-decoration: none; white-space: nowrap; }
+  .kit-nav a:hover { color: var(--gold); }
+  .kit-nav .crumb {
+    flex: 1; min-width: 0; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 1.5px; font-size: 10.5px;
+    text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+  .kit-nav a.nav-next { color: var(--gold); font-weight: 600; }
+  /* ============ CONTENT LAYOUT ============ */
+  .kit-content { max-width: 860px; margin: 0 auto; padding: 44px 40px 24px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  .kit-content h1 {
+    font-size: clamp(28px, 4vw, 44px); font-weight: 700; letter-spacing: -1px;
+    line-height: 1.08; color: var(--text-bright); margin-bottom: 18px; text-wrap: balance;
+  }
+  .kit-content h2 {
+    font-size: clamp(20px, 2.4vw, 26px); font-weight: 600; letter-spacing: -0.5px;
+    color: var(--text-bright); margin: 48px 0 8px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border); scroll-margin-top: 64px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .kit-content h2::before {
+    content: attr(data-num); font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    color: var(--gold); border: 1px solid var(--border-bright); border-radius: 5px;
+    padding: 2px 8px; flex-shrink: 0; letter-spacing: 0.5px;
+  }
+  .kit-content h2.plain::before { display: none; }
+  .kit-content h3 {
+    font-size: clamp(16px, 1.8vw, 19px); font-weight: 600; color: var(--text-bright);
+    margin: 30px 0 6px; letter-spacing: -0.3px;
+  }
+  .kit-content p { margin: 12px 0; color: var(--text); }
+  .kit-content .lead { font-size: clamp(16px, 1.1vw + 12px, 19px); line-height: 1.65; color: var(--text-dim); max-width: 70ch; }
+  .kit-content ul, .kit-content ol { margin: 12px 0 12px 26px; }
+  .kit-content li { margin: 6px 0; }
+  .kit-content li > strong { color: var(--text-bright); }
+  .kit-content strong { color: var(--text-bright); font-weight: 600; }
+  .kit-content em { color: var(--text); }
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  /* inline code */
+  .kit-content :not(pre) > code {
+    font-family: var(--font-mono); font-size: 0.85em;
+    background: var(--blue-dim); color: var(--blue);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0; padding: 15px 18px 15px 20px; border-radius: 0 9px 9px 0;
+    border: 1px solid var(--border); border-left: 3px solid var(--c, var(--blue));
+    background: var(--cbg, var(--blue-dim)); font-size: 14.5px; line-height: 1.62;
+  }
+  .callout > .callout-label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--c, var(--blue));
+    display: block; margin-bottom: 7px;
+  }
+  .callout p { margin: 6px 0; color: var(--text); }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--analogy { --c: var(--gold); --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+  .callout--note  { --c: var(--teal);  --cbg: var(--teal-dim); }
+  /* ============ CODE BLOCKS ============ */
+  .codecard { margin: 20px 0; border: 1px solid var(--border-bright); border-radius: 9px; overflow: hidden; background: var(--surface); }
+  .codecard__label {
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.5px; color: var(--text-dim); padding: 8px 14px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+  }
+  .codecard pre {
+    font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55;
+    color: var(--text); padding: 16px 16px; overflow-x: auto;
+    white-space: pre-wrap; word-break: break-word; tab-size: 2;
+  }
+  /* ============ TABLES ============ */
+  .table-wrap { margin: 20px 0; overflow-x: auto; border: 1px solid var(--border); border-radius: 9px; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--surface2);
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim);
+    text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border-bright);
+  }
+  table.data-table tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  table.data-table tbody tr:nth-child(even) { background: var(--surface2); }
+  table.data-table tbody tr:last-child td { border-bottom: none; }
+  table.data-table td.num, table.data-table th.num { text-align: right; font-family: var(--font-mono); }
+  table.data-table code { font-family: var(--font-mono); font-size: 0.86em; background: var(--blue-dim); color: var(--blue); padding: 1px 5px; border-radius: 3px; }
+  /* ============ DETAILS (Check yourself) ============ */
+  .checkyou { margin: 16px 0; }
+  details.qa {
+    margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0; background: var(--surface); overflow: hidden;
+  }
+  details.qa > summary {
+    cursor: pointer; list-style: none; padding: 13px 18px;
+    font-weight: 600; color: var(--text-bright); font-size: 14.5px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::before {
+    content: '▸'; color: var(--gold); font-family: var(--font-mono);
+    transition: transform 0.15s ease; flex-shrink: 0;
+  }
+  details.qa[open] > summary::before { transform: rotate(90deg); }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body { padding: 4px 18px 16px 38px; color: var(--text); font-size: 14px; border-top: 1px solid var(--border); }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+  /* ============ ASCII / pre figure ============ */
+  .ascii {
+    margin: 20px 0; padding: 18px 18px; border: 1px solid var(--border-bright);
+    border-radius: 9px; background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    overflow-x: auto;
+  }
+  .ascii pre { font-family: var(--font-mono); font-size: 12px; line-height: 1.45; color: var(--text); white-space: pre; }
+  .pullquote { margin: 28px 0 8px; padding: 4px 0 4px 22px; border-left: 3px solid var(--gold); }
+  .pullquote p { font-size: clamp(17px, 1.6vw, 21px); line-height: 1.4; color: var(--text-bright); font-weight: 500; letter-spacing: -0.3px; }
+  blockquote.bq { margin: 18px 0; padding: 4px 0 4px 20px; border-left: 3px solid var(--border-bright); color: var(--text-dim); }
+  blockquote.bq p { color: var(--text-dim); }
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px; margin: 40px auto 48px; padding: 20px 40px 0;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-foot a { color: var(--text-dim); text-decoration: none; }
+  .kit-foot a:hover { color: var(--gold); }
+  .kit-foot a.foot-home { color: var(--text-dim); }
+  .kit-foot a.foot-next { color: var(--gold); font-weight: 600; }
+  .kit-foot .spacer { flex: 1; }
+  /* ============ DIAGRAM SHELL (from system-overview) ============ */
+  .diagram-shell { position: relative; margin: 22px 0; }
+  .diagram-shell__hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 8px; opacity: 0.75; display: flex; align-items: center; gap: 8px; }
+  .diagram-shell__hint::before { content: '⌖'; color: var(--gold); font-size: 13px; }
+  .mermaid-wrap {
+    position: relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    border: 1px solid var(--border-bright); border-radius: 10px; padding: 32px 24px;
+    overflow: auto; display: flex; justify-content: center; align-items: center;
+    min-height: 400px; box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05); cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+  .zoom-controls { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; z-index: 10; background: var(--surface); border: 1px solid var(--border-bright); border-radius: 6px; padding: 2px; box-shadow: 0 1px 4px rgba(13, 25, 41, 0.08); }
+  .zoom-controls button { width: 28px; height: 28px; border: none; background: transparent; color: var(--text-dim); font-family: var(--font-mono); font-size: 14px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background 0.15s ease, color 0.15s ease; }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--gold); }
+  .mermaid-viewport { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 300px; }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); padding: 0 6px; align-self: center; white-space: nowrap; }
+  .mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 16px !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; font-family: var(--font-mono) !important; font-size: 12.5px !important; }
+  .mermaid .edgeLabel rect, .mermaid .edgeLabel foreignObject { fill: var(--surface) !important; }
+  .mermaid .cluster rect { stroke-width: 1.25px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+  .mermaid .edge-pattern-solid { stroke-width: 1.5px !important; }
+  .caption { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 0 8px 8px 0; padding: 15px 20px; font-size: 13.5px; line-height: 1.65; color: var(--text-dim); margin-top: 16px; }
+  .caption strong { color: var(--text); font-weight: 600; }
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 760px) {
+    .kit-nav { padding: 10px 20px; }
+    .kit-content { padding: 28px 20px 20px; }
+    .kit-foot { padding: 20px 20px 0; }
+    .kit-nav .crumb { display: none; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+</style>
+
+</head>
+<body>
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Onboarding Kit &middot; <b>Start Here</b></span>
+  <a class="nav-next" href="primer-01-what-is-wrapper-sync.html">Next: What is wrapper-sync? &#9654;</a>
+</nav>
+
+<main class="kit-content">
+
+<style>
+  .onion-grid { display: grid; gap: 12px; margin: 24px 0 8px; }
+  .onion-layer {
+    display: flex; align-items: flex-start; gap: 16px;
+    border: 1px solid var(--border); border-left: 4px solid var(--c, var(--blue));
+    background: var(--surface); border-radius: 0 10px 10px 0; padding: 14px 18px;
+  }
+  .onion-layer .ol-num {
+    font-family: var(--font-mono); font-size: 18px; font-weight: 600; color: var(--c, var(--blue));
+    flex-shrink: 0; width: 28px; text-align: center;
+  }
+  .onion-layer .ol-name { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--c, var(--blue)); }
+  .onion-layer .ol-desc { font-size: 14px; color: var(--text-dim); margin-top: 3px; }
+  .onion-layer .ol-desc b { color: var(--text); }
+  .start-here {
+    display: flex; align-items: center; gap: 18px; margin: 28px 0;
+    border: 1px solid var(--border-bright); border-radius: 12px; padding: 20px 24px;
+    background: color-mix(in srgb, var(--surface) 88%, var(--gold) 12%);
+  }
+  .start-here .sh-mark { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
+  .start-here .sh-title { font-size: 19px; font-weight: 600; color: var(--text-bright); margin: 2px 0 4px; }
+  .start-here .sh-cta { margin-left: auto; flex-shrink: 0; }
+  .start-here .sh-cta a {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600; text-decoration: none;
+    color: #fff; background: var(--blue); border: 1px solid var(--blue);
+    padding: 10px 18px; border-radius: 8px; white-space: nowrap; display: inline-block;
+  }
+  @media (prefers-color-scheme: dark) { .start-here .sh-cta a { color: #0b1626; background: var(--gold); border-color: var(--gold); } }
+  .start-here .sh-cta a:hover { opacity: 0.9; }
+  .toc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 18px 0; }
+  .toc-card { border: 1px solid var(--border); border-top: 3px solid var(--c, var(--blue)); border-radius: 10px; background: var(--surface); padding: 16px 18px; }
+  .toc-card__head { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--c, var(--blue)); }
+  .toc-card__blurb { font-size: 12.5px; color: var(--text-dim); margin: 6px 0 10px; line-height: 1.5; }
+  .toc-list { margin: 0 0 0 18px; padding: 0; }
+  .toc-list li { margin: 5px 0; font-size: 13.5px; }
+  .toc-list a { color: var(--text); text-decoration: none; }
+  .toc-list a:hover { color: var(--gold); text-decoration: underline; }
+  .bigpic { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 18px 0; }
+  .bigpic a.bp-card { display: block; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 18px 20px; text-decoration: none; transition: border-color 0.15s; }
+  .bigpic a.bp-card:hover { border-color: var(--gold); }
+  .bigpic .bp-kind { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
+  .bigpic .bp-title { font-size: 17px; font-weight: 600; color: var(--text-bright); margin: 5px 0; }
+  .bigpic .bp-desc { font-size: 13px; color: var(--text-dim); }
+</style>
+
+<header>
+  <div class="eyebrow animate" style="--i:0">clevertap &middot; wrapper-sync automation</div>
+  <h1 class="animate" style="--i:1">Wrapper-Sync Onboarding Kit</h1>
+  <p class="lead animate" style="--i:2">
+    This kit teaches the <strong>wrapper-sync automation</strong> from zero. It assumes you know
+    <strong>nothing</strong> about Python, git, GitHub Actions, or even what a &ldquo;wrapper SDK&rdquo; is.
+    By the end you should be able to explain the whole system to someone else &mdash; that&rsquo;s the bar.
+  </p>
+</header>
+
+<div class="callout callout--info animate" style="--i:3">
+  <span class="callout-label">What is this system, in one breath?</span>
+  <p>When CleverTap ships a new native Android/iOS SDK, someone clicks <strong>one button</strong> and a robot
+  (Claude, running on GitHub&rsquo;s servers) reads what changed, updates the wrapper code to match, and opens a
+  pull request for a human to review. This kit explains every moving part of that.</p>
+</div>
+
+<h2 class="plain" id="onion">The one mental model to anchor on</h2>
+<p>Everything in this system is a <strong>4-layer onion</strong>. A maintainer&rsquo;s click travels
+<em>down</em> the layers; a finished pull request travels back <em>up</em>.</p>
+
+<div class="onion-grid">
+  <div class="onion-layer" style="--c:var(--gold)">
+    <div class="ol-num">&#9312;</div>
+    <div><div class="ol-name">Trigger</div><div class="ol-desc">A button/form in a wrapper repo. <b>&ldquo;I want to sync to v8.2.0&rdquo;</b> &mdash; it just calls the conductor.</div></div>
+  </div>
+  <div class="onion-layer" style="--c:var(--teal)">
+    <div class="ol-num">&#9313;</div>
+    <div><div class="ol-name">Conductor</div><div class="ol-desc"><code>sync.yml</code> sequences the steps &mdash; no domain brains, just order and gates. <b>&ldquo;do A, then B, then C&hellip;&rdquo;</b></div></div>
+  </div>
+  <div class="onion-layer" style="--c:var(--rose)">
+    <div class="ol-num">&#9314;</div>
+    <div><div class="ol-name">Brain</div><div class="ol-desc">Claude (an AI) does the actual wrapping. <b>&ldquo;decide what to change &amp; change it.&rdquo;</b></div></div>
+  </div>
+  <div class="onion-layer" style="--c:var(--green)">
+    <div class="ol-num">&#9315;</div>
+    <div><div class="ol-name">Ground truth</div><div class="ol-desc"><code>diff_native_api.py</code>: the cold, hard facts. <b>&ldquo;here is exactly what changed.&rdquo;</b></div></div>
+  </div>
+</div>
+
+<div class="callout callout--warn">
+  <span class="callout-label">The idea beginners miss (layer &#9313;&rarr;&#9314;)</span>
+  <p><strong>The YAML file does not wrap any APIs.</strong> It just hands a written prompt to an AI, and the AI
+  does the work. Hold onto that and the rest falls into place.</p>
+</div>
+
+<div class="start-here">
+  <div>
+    <div class="sh-mark">&#9656; Start here</div>
+    <div class="sh-title">What is wrapper-sync?</div>
+    <div style="font-size:13.5px;color:var(--text-dim)">The story: the problem we had, and the one-button fix we built. No prerequisites.</div>
+  </div>
+  <div class="sh-cta"><a href="primer-01-what-is-wrapper-sync.html">Begin the primer &#9654;</a></div>
+</div>
+
+<h2 class="plain" id="contents">Full contents</h2>
+<p>Read in order. Each page ends with a <strong>&ldquo;Check yourself&rdquo;</strong> block &mdash; answer the
+questions before moving on. Trying to recall an answer is what makes it stick; re-reading does almost nothing.</p>
+
+<div class="toc-grid">
+  <div class="toc-card" style="--c:var(--gold)">
+    <div class="toc-card__head">Primer</div>
+    <p class="toc-card__blurb">Start here. The story, the one mental model, a real run, and where every file lives.</p>
+    <ol class="toc-list">
+      <li><a href="primer-01-what-is-wrapper-sync.html">What is wrapper-sync?</a></li>
+      <li><a href="primer-02-the-4-layer-onion.html">The 4-Layer Onion</a></li>
+      <li><a href="primer-03-a-day-in-the-life.html">A Day in the Life</a></li>
+      <li><a href="primer-04-repos-and-where-things-live.html">Repos & Where Things Live</a></li>
+    </ol>
+  </div>
+  <div class="toc-card" style="--c:var(--teal)">
+    <div class="toc-card__head">Reference</div>
+    <p class="toc-card__blurb">Every jargon word, defined for a first-timer. Keep it open in a tab.</p>
+    <ol class="toc-list">
+      <li><a href="glossary.html">Glossary</a></li>
+    </ol>
+  </div>
+  <div class="toc-card" style="--c:var(--rose)">
+    <div class="toc-card__head">Walkthroughs</div>
+    <p class="toc-card__blurb">Each confusing file explained line by line — the diff tool, the conductor, the brain, the trigger.</p>
+    <ol class="toc-list">
+      <li><a href="walk-README.html">Walkthroughs — Overview & Ranking</a></li>
+      <li><a href="walk-diff-00-overview.html">diff tool — Overview</a></li>
+      <li><a href="walk-diff-02-source-acquisition.html">diff tool — Source Acquisition</a></li>
+      <li><a href="walk-diff-03-surface-extraction-java-kotlin.html">diff tool — Java/Kotlin Extraction</a></li>
+      <li><a href="walk-diff-04-surface-extraction-objc.html">diff tool — Obj-C Extraction</a></li>
+      <li><a href="walk-diff-05-diffing.html">diff tool — Diffing</a></li>
+      <li><a href="walk-diff-06-build-manifest-android.html">diff tool — Android Build Manifest</a></li>
+      <li><a href="walk-diff-07-build-manifest-ios.html">diff tool — iOS Build Manifest</a></li>
+      <li><a href="walk-diff-08-changelog-crossvalidation.html">diff tool — Changelog Cross-validation</a></li>
+      <li><a href="walk-diff-09-output-rendering.html">diff tool — Output Rendering</a></li>
+      <li><a href="walk-diff-10-main-orchestration.html">diff tool — main()</a></li>
+      <li><a href="walk-sync-yml.html">The Conductor (sync.yml)</a></li>
+      <li><a href="walk-claude-sync-action.html">The Brain (claude-sync)</a></li>
+      <li><a href="walk-build-cordova-action.html">The Cordova Build Action</a></li>
+      <li><a href="walk-orchestrator-prompt-cordova.html">Reading the Prompt as a Program</a></li>
+      <li><a href="walk-wrapper-dispatch.html">The Trigger Form</a></li>
+    </ol>
+  </div>
+  <div class="toc-card" style="--c:var(--green)">
+    <div class="toc-card__head">Runbook</div>
+    <p class="toc-card__blurb">Do it yourself: prerequisites, trigger a sync, read the run, review the PR, dry-run safely.</p>
+    <ol class="toc-list">
+      <li><a href="runbook-01-prerequisites.html">Runbook — Prerequisites</a></li>
+      <li><a href="runbook-02-trigger-a-sync.html">Runbook — Trigger a Sync</a></li>
+      <li><a href="runbook-03-read-the-run.html">Runbook — Read the Run</a></li>
+      <li><a href="runbook-04-review-the-pr.html">Runbook — Review the PR</a></li>
+      <li><a href="runbook-05-dry-run-and-skip-sync.html">Runbook — Dry Run & skip_sync</a></li>
+    </ol>
+  </div>
+  <div class="toc-card" style="--c:var(--amber)">
+    <div class="toc-card__head">Troubleshooting</div>
+    <p class="toc-card__blurb">When it breaks — failure modes as symptom, cause, and fix, plus an FAQ.</p>
+    <ol class="toc-list">
+      <li><a href="trouble-01-failure-modes.html">Troubleshooting — Failure Modes</a></li>
+      <li><a href="trouble-02-when-claude-misses-an-api.html">Troubleshooting — Missed API</a></li>
+      <li><a href="trouble-03-source-verification-failures.html">Troubleshooting — Source Verification</a></li>
+      <li><a href="trouble-04-cost-and-caps.html">Troubleshooting — Cost & Caps</a></li>
+      <li><a href="trouble-05-faq.html">Troubleshooting — FAQ</a></li>
+    </ol>
+  </div>
+  <div class="toc-card" style="--c:var(--blue)">
+    <div class="toc-card__head">Retention</div>
+    <p class="toc-card__blurb">Prove you learned it: flashcards, exercises, the capstone, and a graduation checklist.</p>
+    <ol class="toc-list">
+      <li><a href="retention-README.html">Retention — How to Lock It In</a></li>
+      <li><a href="retention-flashcards.html">Flashcards</a></li>
+      <li><a href="retention-exercises.html">Exercises</a></li>
+      <li><a href="retention-capstone.html">Capstone</a></li>
+      <li><a href="retention-graduation-checklist.html">Graduation Checklist</a></li>
+    </ol>
+  </div>
+</div>
+
+<h2 class="plain" id="bigpicture">Big picture</h2>
+<p>Two visual companions to the written pages &mdash; the same content, seen whole.</p>
+<div class="bigpic">
+  <a class="bp-card" href="system-overview.html">
+    <div class="bp-kind">Diagrams</div>
+    <div class="bp-title">System Overview</div>
+    <div class="bp-desc">The 4-layer onion, the end-to-end run, the conductor&rsquo;s gates, the diff tool&rsquo;s stages, and where it all runs &mdash; five zoomable diagrams on one page.</div>
+  </a>
+  <a class="bp-card" href="onboarding-slides.html">
+    <div class="bp-kind">Deck</div>
+    <div class="bp-title">Onboarding Slides</div>
+    <div class="bp-desc">The same story as a presentable slide deck &mdash; good for walking a teammate through it live.</div>
+  </a>
+</div>
+
+<hr class="rule">
+
+<h2 class="plain" id="maintainers">A note for maintainers of this kit</h2>
+<ul>
+  <li>The diagrams under <code>docs/10-diagrams/</code> are <strong>Mermaid text</strong> committed to git &mdash; they are the source of truth and render automatically on GitHub.</li>
+  <li>The pretty HTML/slide versions are <strong>generated</strong> from these by the <code>visual-explainer</code> plugin into <code>docs/_generated/</code> (gitignored). Never hand-edit generated HTML.</li>
+  <li>When the code changes, follow <code>docs/90-meta/drift-checklist.md</code> so the docs don&rsquo;t rot.</li>
+</ul>
+
+</main>
+
+<footer class="kit-foot">
+  <span></span>
+  <span class="spacer"></span>
+  <a class="foot-home" href="index.html">&#8962; Kit home</a>
+  <span class="spacer"></span>
+  <a class="foot-next" href="primer-01-what-is-wrapper-sync.html">What is wrapper-sync? &#9654;</a>
+</footer>
+
+
+</body>
+</html>

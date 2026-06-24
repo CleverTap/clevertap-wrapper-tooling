@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>diff tool — Obj-C Extraction — CleverTap Onboarding Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    /* accents: deep blue + gold, with semantic supporting tones */
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .grid > *, .flex > * { min-width: 0; }
+
+  body {
+    background-color: var(--bg);
+    /* blueprint grid: fine lines + heavier major lines */
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ LAYOUT (TOC + main) ============ */
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 44px;
+  }
+  .main { min-width: 0; }
+
+  /* ---- TOC ---- */
+  .toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    grid-row: 1 / -1;
+    padding: 16px 0;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+  }
+  .toc::-webkit-scrollbar { width: 3px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .toc-mark {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 0 0 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc a {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.35;
+    margin-bottom: 1px;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface2); }
+  .toc a.active { color: var(--text-bright); border-left-color: var(--gold); background: var(--surface2); }
+
+  /* ============ HERO ============ */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 22px;
+    height: 1px;
+    background: var(--gold);
+  }
+  h1 {
+    font-size: clamp(30px, 4.4vw, 50px);
+    font-weight: 700;
+    letter-spacing: -1.2px;
+    line-height: 1.04;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: clamp(16px, 1.1vw + 12px, 19px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 70ch;
+    margin-bottom: 12px;
+  }
+  .lead strong { color: var(--text); font-weight: 600; }
+  .lead code, .caption code, .terms code, .ve-card code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .chip::before {
+    content: '';
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c, var(--gold));
+  }
+
+  /* ============ SECTION HEADS ============ */
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 56px 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 24px;
+  }
+  .sec-head__num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    border: 1px solid var(--border-bright);
+    border-radius: 5px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .sec-head__title {
+    font-size: clamp(20px, 2.4vw, 27px);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-bright);
+  }
+  .sec-intro {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    max-width: 74ch;
+    margin: 14px 0 22px;
+  }
+
+  /* ============ MERMAID CONTAINER (from template) ============ */
+  .diagram-shell { position: relative; }
+  .diagram-shell__hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    opacity: 0.75;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .diagram-shell__hint::before {
+    content: '⌖';
+    color: var(--gold);
+    font-size: 13px;
+  }
+
+  .mermaid-wrap {
+    position: relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 32px 24px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+    cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+
+  .zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+    z-index: 10;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 2px;
+    box-shadow: 0 1px 4px rgba(13, 25, 41, 0.08);
+  }
+  .zoom-controls button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--gold); }
+
+  .mermaid-viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+  }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 0 6px;
+    align-self: center;
+    white-space: nowrap;
+  }
+
+  /* ============ MERMAID SVG OVERRIDES ============ */
+  .mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 16px !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; font-family: var(--font-mono) !important; font-size: 12.5px !important; }
+  .mermaid .edgeLabel rect, .mermaid .edgeLabel foreignObject { fill: var(--surface) !important; }
+  .mermaid .cluster rect { stroke-width: 1.25px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+  .mermaid .edge-pattern-solid { stroke-width: 1.5px !important; }
+  /* sequence diagram */
+  .mermaid .actor { stroke-width: 1.5px !important; }
+  .mermaid text.actor, .mermaid .actor > tspan { font-family: var(--font-body) !important; }
+  .mermaid .messageText { font-family: var(--font-mono) !important; font-size: 12px !important; fill: var(--text) !important; }
+  .mermaid .loopText, .mermaid .loopText tspan { font-family: var(--font-mono) !important; fill: var(--text-dim) !important; }
+  .mermaid .noteText { font-family: var(--font-body) !important; }
+
+  /* ============ CAPTION ============ */
+  .caption {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+  .caption strong { color: var(--text); font-weight: 600; }
+
+  /* ============ ONION LEGEND ============ */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border-bright); }
+
+  /* ============ KEY TERMS ============ */
+  .terms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .term {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 15px 17px;
+    position: relative;
+  }
+  .term--hero {
+    background: color-mix(in srgb, var(--surface) 90%, var(--gold) 10%);
+    border-color: color-mix(in srgb, var(--border) 40%, var(--gold) 60%);
+    box-shadow: 0 3px 14px rgba(13, 25, 41, 0.07);
+    grid-column: 1 / -1;
+  }
+  .term__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .term__label::before {
+    content: '';
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+  }
+  .term p { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+  .term p strong { color: var(--text); font-weight: 600; }
+
+  .pullquote {
+    margin: 28px 0 8px;
+    padding: 4px 0 4px 22px;
+    border-left: 3px solid var(--gold);
+  }
+  .pullquote p {
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.4;
+    color: var(--text-bright);
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1000px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 0 20px 28px; }
+    .toc {
+      position: sticky; top: 0; z-index: 200;
+      grid-row: auto; max-height: none;
+      display: flex; gap: 4px; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      margin: 0 -20px 4px;
+    }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc-title, .toc-mark { display: none; }
+    .toc a {
+      white-space: nowrap; flex-shrink: 0;
+      border-left: none; border-bottom: 2px solid transparent;
+      border-radius: 4px 4px 0 0; padding: 6px 10px; font-size: 10.5px;
+    }
+    .toc a.active { border-left: none; border-bottom-color: var(--gold); }
+    .main { padding-top: 22px; }
+    .sec-head { scroll-margin-top: 54px; }
+  }
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+
+  /* ============ KIT PAGE LAYOUT ============ */
+  .kit-nav, .kit-foot {
+    max-width: 980px; margin: 0 auto; display: flex; align-items: center;
+    gap: 14px; font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-nav { padding: 18px 40px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .kit-nav a, .kit-foot a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover, .kit-foot a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    color: var(--text-dim); flex: 1 1 auto; text-align: center; text-transform: uppercase;
+    letter-spacing: 1.5px; font-size: 10.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  }
+  .kit-foot {
+    margin-top: 56px; padding: 24px 40px 48px; border-top: 1px solid var(--border);
+    justify-content: space-between;
+  }
+  .kit-foot a.home { color: var(--text-dim); }
+  .kit-content { max-width: 880px; margin: 0 auto; padding: 36px 40px 0; }
+  .kit-content h1 { font-size: clamp(26px, 3.4vw, 38px); margin-bottom: 18px; line-height: 1.1; }
+  .kit-content h1 code { font-family: var(--font-mono); font-size: 0.7em; background: var(--blue-dim);
+    color: var(--blue); padding: 2px 8px; border-radius: 5px; }
+  .kit-content h2 {
+    font-size: clamp(19px, 2.2vw, 24px); font-weight: 600; letter-spacing: -0.4px;
+    color: var(--text-bright); margin: 46px 0 6px; padding-bottom: 11px;
+    border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 12px;
+    scroll-margin-top: 20px;
+  }
+  .kit-content h2::before { content: '§'; font-family: var(--font-mono); font-size: 13px;
+    color: var(--gold); flex-shrink: 0; }
+  .kit-content h2 code { font-family: var(--font-mono); font-size: 0.78em; background: var(--blue-dim);
+    color: var(--blue); padding: 1px 6px; border-radius: 4px; }
+  .kit-content h3 { font-size: 16.5px; font-weight: 600; color: var(--text-bright);
+    margin: 30px 0 8px; letter-spacing: -0.2px; }
+  .kit-content h4 { font-size: 14px; font-weight: 600; color: var(--text); margin: 20px 0 6px; }
+  .kit-content p { margin: 12px 0; font-size: 15px; line-height: 1.68; }
+  .kit-content ul, .kit-content ol { margin: 12px 0 12px 4px; padding-left: 22px; }
+  .kit-content li { margin: 6px 0; font-size: 15px; line-height: 1.62; }
+  .kit-content li > code, .kit-content p > code, .kit-content td code,
+  .kit-content summary code, .kit-content h3 code, .kit-content h4 code {
+    font-family: var(--font-mono); font-size: 0.84em; background: var(--blue-dim);
+    color: var(--blue); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere;
+  }
+  .kit-content strong { color: var(--text-bright); font-weight: 600; }
+  .kit-content a { overflow-wrap: anywhere; }
+  .kit-content hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  .lead-note {
+    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 18px 0 8px; font-size: 14.5px;
+    line-height: 1.62; color: var(--text-dim);
+  }
+  .lead-note p { margin: 6px 0; font-size: 14.5px; }
+  .lead-note strong { color: var(--text); }
+
+  /* ============ CODE CARD ============ */
+  .code-card {
+    border: 1px solid var(--border-bright); border-radius: 10px; overflow: hidden;
+    margin: 18px 0; background: var(--surface); box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+  }
+  .code-card__head {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; color: var(--text-dim);
+    background: var(--surface2); padding: 9px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .code-card__head::before { content: ''; width: 7px; height: 7px; border-radius: 2px;
+    background: var(--gold); flex-shrink: 0; }
+  .code-card__lang { margin-left: auto; color: var(--gold); text-transform: uppercase;
+    letter-spacing: 1px; font-size: 10px; }
+  .code-card pre {
+    margin: 0; padding: 16px 18px; font-family: var(--font-mono); font-size: 13px;
+    line-height: 1.62; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2;
+  }
+  .callout pre {
+    margin: 10px 0 2px; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 7px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55;
+    white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text);
+  }
+
+  /* ============ CALLOUTS ============ */
+  .callout { border-radius: 0 9px 9px 0; padding: 15px 18px; margin: 18px 0; font-size: 14px; line-height: 1.62; }
+  .callout p { margin: 8px 0; font-size: 14px; }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout__label { font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 8px; }
+  .callout code { font-family: var(--font-mono); font-size: 0.84em; padding: 1px 5px;
+    border-radius: 3px; overflow-wrap: anywhere; }
+  .callout ul { margin: 8px 0 4px; padding-left: 20px; }
+  .callout li { font-size: 14px; }
+  .callout--info { background: var(--blue-dim); border-left: 3px solid var(--blue); }
+  .callout--info .callout__label { color: var(--blue); }
+  .callout--info code { background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue); }
+  .callout--amber { background: var(--gold-dim); border-left: 3px solid var(--gold); }
+  .callout--amber .callout__label { color: var(--gold); }
+  .callout--amber code { background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--amber); }
+  .callout--warn { background: var(--rose-dim); border-left: 3px solid var(--rose); }
+  .callout--warn .callout__label { color: var(--rose); }
+  .callout--warn code { background: color-mix(in srgb, var(--rose) 14%, transparent); color: var(--rose); }
+
+  /* ============ DATA TABLE ============ */
+  .table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--border); border-radius: 10px; }
+  table.data { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.data thead th {
+    position: sticky; top: 0; background: var(--surface2); color: var(--text-bright);
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border-bright); white-space: nowrap;
+  }
+  table.data tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.55; }
+  table.data tbody tr:nth-child(even) { background: var(--surface2); }
+  table.data tbody tr:last-child td { border-bottom: none; }
+  table.data .marker { font-weight: 600; color: var(--gold); font-family: var(--font-mono); white-space: nowrap; }
+  table.data code { font-family: var(--font-mono); font-size: 0.86em; background: var(--blue-dim);
+    color: var(--blue); padding: 1px 4px; border-radius: 3px; overflow-wrap: anywhere; }
+
+  /* ============ DETAILS / CHECK YOURSELF ============ */
+  details.qa { border: 1px solid var(--border); border-radius: 9px; margin: 10px 0;
+    background: var(--surface); overflow: hidden; transition: border-color 0.15s; }
+  details.qa[open] { border-color: var(--border-bright); }
+  details.qa summary {
+    cursor: pointer; padding: 13px 38px 13px 42px; font-weight: 600; font-size: 14.5px;
+    color: var(--text-bright); position: relative; list-style: none; line-height: 1.5;
+  }
+  details.qa summary::-webkit-details-marker { display: none; }
+  details.qa summary::before {
+    content: 'Q'; position: absolute; left: 14px; top: 12px; font-family: var(--font-mono);
+    font-size: 11px; font-weight: 600; color: var(--gold); border: 1px solid var(--border-bright);
+    border-radius: 5px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  }
+  details.qa summary::after { content: '+'; position: absolute; right: 16px; top: 11px;
+    font-family: var(--font-mono); color: var(--text-dim); font-size: 16px; }
+  details.qa[open] summary::after { content: '\2212'; }
+  details.qa summary:hover { background: var(--surface2); }
+  details.qa .qa-body {
+    padding: 2px 16px 16px 42px; font-size: 14px; line-height: 1.65; color: var(--text-dim);
+    border-top: 1px solid var(--border);
+  }
+  details.qa .qa-body p { margin: 12px 0; font-size: 14px; }
+  details.qa .qa-body strong { color: var(--text); }
+
+  .endnote {
+    background: color-mix(in srgb, var(--surface) 90%, var(--green) 10%);
+    border: 1px solid color-mix(in srgb, var(--border) 50%, var(--green) 50%);
+    border-radius: 9px; padding: 16px 20px; margin: 24px 0; font-size: 14.5px; line-height: 1.65;
+  }
+  .endnote strong { color: var(--text-bright); }
+
+  @media (max-width: 600px) {
+    .kit-nav, .kit-foot, .kit-content { padding-left: 18px; padding-right: 18px; }
+  }
+
+</style>
+</head>
+<body>
+  <nav class="kit-nav">
+    <a href="index.html">&#9664; Onboarding Kit</a>
+    <span class="crumb">Walkthroughs · diff tool · Obj-C Extraction</span>
+    <a href="walk-diff-05-diffing.html">Next: Diffing &#9654;</a>
+  </nav>
+
+  <main class="kit-content">
+<h1>Stage 2 (iOS) — Pulling selectors out of Objective-C headers (<code>_extract_objc_header</code>)</h1>
+<div class="lead-note"><p><strong>In one sentence:</strong> read the iOS <code>.h</code> header files, find every Objective-C method declaration, and turn its quirky <code>name:(type)arg name2:(type)arg2</code> shape into one tidy <em>selector</em> string. <strong>File:</strong> <code>tools/diff_native_api.py</code>, section <em>"Public-surface extraction"</em> (approx. lines 412–513).</p></div>
+<p>This is the iOS twin of <a href="walk-diff-03-surface-extraction-java-kotlin.html">page 03</a>. Java/Kotlin methods look like <code>name(params)</code>. Objective-C is different — its method names are <strong>split up and interleaved with the parameters</strong>. The interesting part of this page is the little character-by-character walker that stitches that split-up name back together.</p>
+<h2>The shape (read this first)</h2>
+<p><code>_objc_extract_selector</code> walks the declaration <strong>one character at a time</strong>, building the selector piece by piece. It's a tiny <strong>state machine</strong>: read an identifier, look for a <code>:</code>, skip the <code>(type)</code> and the parameter name, then loop back for the next piece.</p>
+    <section class="diagram-shell">
+      <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom · drag to pan · double-click to fit · ⛶ opens full size</p>
+      <div class="mermaid-wrap">
+        <div class="zoom-controls">
+          <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+          <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+          <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+          <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+          <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+          <span class="zoom-label">Loading&hellip;</span>
+        </div>
+        <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"><style>foreignObject div { overflow: visible !important; }</style><svg id="mermaid-1781628180671" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 620.23828125px;" viewBox="0 0 620.23828125 1066.078125" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#mermaid-1781628180671{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#mermaid-1781628180671 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#mermaid-1781628180671 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#mermaid-1781628180671 .error-icon{fill:#552222;}#mermaid-1781628180671 .error-text{fill:#552222;stroke:#552222;}#mermaid-1781628180671 .edge-thickness-normal{stroke-width:1px;}#mermaid-1781628180671 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1781628180671 .edge-pattern-solid{stroke-dasharray:0;}#mermaid-1781628180671 .edge-thickness-invisible{stroke-width:0;fill:none;}#mermaid-1781628180671 .edge-pattern-dashed{stroke-dasharray:3;}#mermaid-1781628180671 .edge-pattern-dotted{stroke-dasharray:2;}#mermaid-1781628180671 .marker{fill:#333333;stroke:#333333;}#mermaid-1781628180671 .marker.cross{stroke:#333333;}#mermaid-1781628180671 svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mermaid-1781628180671 p{margin:0;}#mermaid-1781628180671 .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1781628180671 .cluster-label text{fill:#333;}#mermaid-1781628180671 .cluster-label span{color:#333;}#mermaid-1781628180671 .cluster-label span p{background-color:transparent;}#mermaid-1781628180671 .label text,#mermaid-1781628180671 span{fill:#333;color:#333;}#mermaid-1781628180671 .node rect,#mermaid-1781628180671 .node circle,#mermaid-1781628180671 .node ellipse,#mermaid-1781628180671 .node polygon,#mermaid-1781628180671 .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#mermaid-1781628180671 .rough-node .label text,#mermaid-1781628180671 .node .label text,#mermaid-1781628180671 .image-shape .label,#mermaid-1781628180671 .icon-shape .label{text-anchor:middle;}#mermaid-1781628180671 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#mermaid-1781628180671 .rough-node .label,#mermaid-1781628180671 .node .label,#mermaid-1781628180671 .image-shape .label,#mermaid-1781628180671 .icon-shape .label{text-align:center;}#mermaid-1781628180671 .node.clickable{cursor:pointer;}#mermaid-1781628180671 .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#mermaid-1781628180671 .arrowheadPath{fill:#333333;}#mermaid-1781628180671 .edgePath .path{stroke:#333333;stroke-width:2.0px;}#mermaid-1781628180671 .flowchart-link{stroke:#333333;fill:none;}#mermaid-1781628180671 .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628180671 .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#mermaid-1781628180671 .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628180671 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-1781628180671 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid-1781628180671 .cluster text{fill:#333;}#mermaid-1781628180671 .cluster span{color:#333;}#mermaid-1781628180671 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#mermaid-1781628180671 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#mermaid-1781628180671 rect.text{fill:none;stroke-width:0;}#mermaid-1781628180671 .icon-shape,#mermaid-1781628180671 .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628180671 .icon-shape p,#mermaid-1781628180671 .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#mermaid-1781628180671 .icon-shape .label rect,#mermaid-1781628180671 .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628180671 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#mermaid-1781628180671 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#mermaid-1781628180671 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="mermaid-1781628180671_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628180671_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628180671_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628180671_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628180671_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628180671_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><g class="root"><g class="clusters"></g><g class="edgePaths"><path d="M314.43,86L314.43,90.167C314.43,94.333,314.43,102.667,314.43,110.333C314.43,118,314.43,125,314.43,128.5L314.43,132" id="L_START_SKIPWS_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_START_SKIPWS_0" data-points="W3sieCI6MzE0LjQyOTY4NzUsInkiOjg2fSx7IngiOjMxNC40Mjk2ODc1LCJ5IjoxMTF9LHsieCI6MzE0LjQyOTY4NzUsInkiOjEzNn1d" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M276.67,190L270.843,194.167C265.016,198.333,253.361,206.667,247.534,214.333C241.707,222,241.707,229,241.707,232.5L241.707,236" id="L_SKIPWS_IDENT_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SKIPWS_IDENT_0" data-points="W3sieCI6Mjc2LjY2OTg0Njc1NDgwNzcsInkiOjE5MH0seyJ4IjoyNDEuNzA3MDMxMjUsInkiOjIxNX0seyJ4IjoyNDEuNzA3MDMxMjUsInkiOjI0MH1d" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M185.294,375.853L163.183,391.422C141.071,406.991,96.848,438.128,74.737,471.848C52.625,505.568,52.625,541.87,52.625,578.172C52.625,614.474,52.625,650.776,52.625,683.594C52.625,716.411,52.625,745.745,52.625,773.078C52.625,800.411,52.625,825.745,57.793,844.085C62.961,862.426,73.298,873.773,78.466,879.447L83.634,885.121" id="L_IDENT_DONE_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_IDENT_DONE_0" data-points="W3sieCI6MTg1LjI5NDM5OTA4OTAyMzEzLCJ5IjozNzUuODUyOTkyODM5MDIzMX0seyJ4Ijo1Mi42MjUsInkiOjQ2OS4yNjU2MjV9LHsieCI6NTIuNjI1LCJ5Ijo1NzguMTcxODc1fSx7IngiOjUyLjYyNSwieSI6Njg3LjA3ODEyNX0seyJ4Ijo1Mi42MjUsInkiOjc3NS4wNzgxMjV9LHsieCI6NTIuNjI1LCJ5Ijo4NTEuMDc4MTI1fSx7IngiOjg2LjMyNzg4MDg1OTM3NSwieSI6ODg4LjA3ODEyNX1d" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M270.983,402.99L275.82,414.036C280.656,425.082,290.33,447.174,295.167,463.72C300.004,480.266,300.004,491.266,300.004,496.766L300.004,502.266" id="L_IDENT_COLON_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_IDENT_COLON_0" data-points="W3sieCI6MjcwLjk4Mjc1NDUwMzI3NTEsInkiOjQwMi45ODk5MDE3NDY3MjQ5fSx7IngiOjMwMC4wMDM5MDYyNSwieSI6NDY5LjI2NTYyNX0seyJ4IjozMDAuMDAzOTA2MjUsInkiOjUwNi4yNjU2MjV9XQ==" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M260.769,610.843L245.511,623.549C230.252,636.255,199.735,661.666,184.477,679.872C169.219,698.078,169.219,709.078,169.219,714.578L169.219,720.078" id="L_COLON_NOARG_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_COLON_NOARG_0" data-points="W3sieCI6MjYwLjc2ODk5ODc5NjU2ODY3LCJ5Ijo2MTAuODQzMjE3NTQ2NTY4N30seyJ4IjoxNjkuMjE4NzUsInkiOjY4Ny4wNzgxMjV9LHsieCI6MTY5LjIxODc1LCJ5Ijo3MjQuMDc4MTI1fV0=" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M169.219,826.078L169.219,830.245C169.219,834.411,169.219,842.745,164.051,852.585C158.882,862.426,148.546,873.773,143.378,879.447L138.209,885.121" id="L_NOARG_DONE_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_NOARG_DONE_0" data-points="W3sieCI6MTY5LjIxODc1LCJ5Ijo4MjYuMDc4MTI1fSx7IngiOjE2OS4yMTg3NSwieSI6ODUxLjA3ODEyNX0seyJ4IjoxMzUuNTE1ODY5MTQwNjI1LCJ5Ijo4ODguMDc4MTI1fV0=" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M337.851,612.231L351.713,624.705C365.575,637.18,393.299,662.129,407.161,684.104C421.023,706.078,421.023,725.078,421.023,734.578L421.023,744.078" id="L_COLON_ADD_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_COLON_ADD_0" data-points="W3sieCI6MzM3Ljg1MTE2NTU3NzA1ODcsInkiOjYxMi4yMzA4NjU2NzI5NDE0fSx7IngiOjQyMS4wMjM0Mzc1LCJ5Ijo2ODcuMDc4MTI1fSx7IngiOjQyMS4wMjM0Mzc1LCJ5Ijo3NDguMDc4MTI1fV0=" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M421.023,802.078L421.023,810.245C421.023,818.411,421.023,834.745,421.023,846.411C421.023,858.078,421.023,865.078,421.023,868.578L421.023,872.078" id="L_ADD_PARENS_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_ADD_PARENS_0" data-points="W3sieCI6NDIxLjAyMzQzNzUsInkiOjgwMi4wNzgxMjV9LHsieCI6NDIxLjAyMzQzNzUsInkiOjg1MS4wNzgxMjV9LHsieCI6NDIxLjAyMzQzNzUsInkiOjg3Ni4wNzgxMjV9XQ==" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M421.023,954.078L421.023,958.245C421.023,962.411,421.023,970.745,426.308,978.69C431.593,986.636,442.163,994.194,447.448,997.973L452.732,1001.752" id="L_PARENS_PNAME_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PARENS_PNAME_0" data-points="W3sieCI6NDIxLjAyMzQzNzUsInkiOjk1NC4wNzgxMjV9LHsieCI6NDIxLjAyMzQzNzUsInkiOjk3OS4wNzgxMjV9LHsieCI6NDU1Ljk4NjI1MzAwNDgwNzcsInkiOjEwMDQuMDc4MTI1fV0=" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path><path d="M531.506,1004.078L537.333,999.911C543.16,995.745,554.814,987.411,560.642,972.578C566.469,957.745,566.469,936.411,566.469,915.078C566.469,893.745,566.469,872.411,566.469,849.078C566.469,825.745,566.469,800.411,566.469,773.078C566.469,745.745,566.469,716.411,566.469,683.594C566.469,650.776,566.469,614.474,566.469,578.172C566.469,541.87,566.469,505.568,566.469,465.228C566.469,424.888,566.469,380.51,566.469,338.133C566.469,295.755,566.469,255.378,539.528,229.63C512.587,203.883,458.705,192.767,431.765,187.208L404.824,181.65" id="L_PNAME_SKIPWS_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PNAME_SKIPWS_0" data-points="W3sieCI6NTMxLjUwNTkzNDQ5NTE5MjMsInkiOjEwMDQuMDc4MTI1fSx7IngiOjU2Ni40Njg3NSwieSI6OTc5LjA3ODEyNX0seyJ4Ijo1NjYuNDY4NzUsInkiOjkxNS4wNzgxMjV9LHsieCI6NTY2LjQ2ODc1LCJ5Ijo4NTEuMDc4MTI1fSx7IngiOjU2Ni40Njg3NSwieSI6Nzc1LjA3ODEyNX0seyJ4Ijo1NjYuNDY4NzUsInkiOjY4Ny4wNzgxMjV9LHsieCI6NTY2LjQ2ODc1LCJ5Ijo1NzguMTcxODc1fSx7IngiOjU2Ni40Njg3NSwieSI6NDY5LjI2NTYyNX0seyJ4Ijo1NjYuNDY4NzUsInkiOjMzNi4xMzI4MTI1fSx7IngiOjU2Ni40Njg3NSwieSI6MjE1fSx7IngiOjQwMC45MDYyNSwieSI6MTgwLjg0MTYwNDQxMzk5ODN9XQ==" marker-end="url(#mermaid-1781628180671_flowchart-v2-pointEnd)"></path></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_START_SKIPWS_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_SKIPWS_IDENT_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(52.625, 687.078125)"><g class="label" data-id="L_IDENT_DONE_0" transform="translate(-8.8984375, -12)"><foreignObject width="17.796875" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>no</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(300.00390625, 469.265625)"><g class="label" data-id="L_IDENT_COLON_0" transform="translate(-12.453125, -12)"><foreignObject width="24.90625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>yes</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(169.21875, 687.078125)"><g class="label" data-id="L_COLON_NOARG_0" transform="translate(-39.578125, -12)"><foreignObject width="79.15625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>no (no-arg)</p></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_NOARG_DONE_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(421.0234375, 687.078125)"><g class="label" data-id="L_COLON_ADD_0" transform="translate(-12.453125, -12)"><foreignObject width="24.90625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>yes</p></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_ADD_PARENS_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_PARENS_PNAME_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_PNAME_SKIPWS_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default  " id="flowchart-START-0" transform="translate(314.4296875, 47)"><rect class="basic label-container" style="" x="-119.3125" y="-39" width="238.625" height="78"></rect><g class="label" style="" transform="translate(-89.3125, -24)"><rect></rect><foreignObject width="178.625" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>start at first char<br>of 'rest' (after return type)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-SKIPWS-1" transform="translate(314.4296875, 163)"><rect class="basic label-container" style="" x="-86.4765625" y="-27" width="172.953125" height="54"></rect><g class="label" style="" transform="translate(-56.4765625, -12)"><rect></rect><foreignObject width="112.953125" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>skip whitespace</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-IDENT-3" transform="translate(241.70703125, 336.1328125)"><polygon points="96.1328125,0 192.265625,-96.1328125 96.1328125,-192.265625 0,-96.1328125" class="label-container" transform="translate(-95.6328125, 96.1328125)"></polygon><g class="label" style="" transform="translate(-57.1328125, -24)"><rect></rect><foreignObject width="114.265625" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>read an<br>identifier (\w+)?</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-DONE-5" transform="translate(110.921875, 915.078125)"><rect class="basic label-container" style="" x="-102.921875" y="-27" width="205.84375" height="54"></rect><g class="label" style="" transform="translate(-72.921875, -12)"><rect></rect><foreignObject width="145.84375" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>join parts → selector</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-COLON-7" transform="translate(300.00390625, 578.171875)"><polygon points="71.90625,0 143.8125,-71.90625 71.90625,-143.8125 0,-71.90625" class="label-container" transform="translate(-71.40625, 71.90625)"></polygon><g class="label" style="" transform="translate(-32.90625, -24)"><rect></rect><foreignObject width="65.8125" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>next char<br>is ':' ?</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-NOARG-9" transform="translate(169.21875, 775.078125)"><rect class="basic label-container" style="" x="-81.59375" y="-51" width="163.1875" height="102"></rect><g class="label" style="" transform="translate(-51.59375, -36)"><rect></rect><foreignObject width="103.1875" height="92"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>if nothing yet,<br>keep this ident<br>then STOP</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-ADD-13" transform="translate(421.0234375, 775.078125)"><rect class="basic label-container" style="" x="-110.4453125" y="-27" width="220.890625" height="54"></rect><g class="label" style="" transform="translate(-80.4453125, -12)"><rect></rect><foreignObject width="160.890625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>append 'ident:' to parts</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-PARENS-15" transform="translate(421.0234375, 915.078125)"><rect class="basic label-container" style="" x="-108.6484375" y="-39" width="217.296875" height="78"></rect><g class="label" style="" transform="translate(-78.6484375, -24)"><rect></rect><foreignObject width="157.296875" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>skip the '(type)' clause<br>(balanced parens)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-PNAME-17" transform="translate(493.74609375, 1031.078125)"><rect class="basic label-container" style="" x="-118.4921875" y="-27" width="236.984375" height="54"></rect><g class="label" style="" transform="translate(-88.4921875, -12)"><rect></rect><foreignObject width="176.984375" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>skip the parameter name</p></span></div></foreignObject></g></g></g></g></g></svg></div></div>
+      </div>
+      <script type="text/plain" class="diagram-source">
+flowchart TD
+    START["start at first char<br/>of 'rest' (after return type)"] --> SKIPWS["skip whitespace"]
+    SKIPWS --> IDENT{"read an<br/>identifier (\\w+)?"}
+    IDENT -- no --> DONE["join parts → selector"]
+    IDENT -- yes --> COLON{"next char<br/>is ':' ?"}
+    COLON -- "no (no-arg)" --> NOARG["if nothing yet,<br/>keep this ident<br/>then STOP"]
+    NOARG --> DONE
+    COLON -- yes --> ADD["append 'ident:' to parts"]
+    ADD --> PARENS["skip the '(type)' clause<br/>(balanced parens)"]
+    PARENS --> PNAME["skip the parameter name"]
+    PNAME --> SKIPWS
+      </script>
+    </section>
+<div class="callout callout--amber"><span class="callout__label">Mental model</span><p><strong>Analogy:</strong> an Obj-C method name is a sentence with the words spread out: <code>recordEvent:(NSString *)event withProps:(NSDictionary *)props</code>. The walker collects just the <em>labels</em> — <code>recordEvent:</code> and <code>withProps:</code> — and throws away the values in between, giving the clean selector <code>recordEvent:withProps:</code>.</p></div>
+<h2>The driver: <code>_extract_objc_header</code></h2>
+<div class="code-card"><div class="code-card__head">tools/diff_native_api.py<span class="code-card__lang">python</span></div><pre>def _extract_objc_header(text: str, rel: str, surface: Surface) -&gt; None:
+    # Strip block and line comments for simplicity
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)     # ①
+    text = re.sub(r"//.*?$", "", text, flags=re.MULTILINE)     # ①
+    ...
+    decls = _collect_objc_method_declarations(text)            # ②
+    for decl in decls:
+        m = re.match(r"^\s*([+\-])\s*\(([^)]+)\)\s*(.+);\s*$", decl, flags=re.DOTALL)  # ③
+        if not m:
+            continue
+        kind_sign, return_type, rest = m.group(1), m.group(2), m.group(3)             # ④
+        selector = _objc_extract_selector(rest)                # ⑤
+        if not selector:
+            continue
+        kind = "static_method" if kind_sign == "+" else "method"   # ⑥
+        sig = _normalize_signature(rest, return_type)          # ⑦
+        surface.add(Symbol(file=rel, kind=kind, name=selector, signature=sig))  # ⑧</pre></div>
+<div class="table-wrap"><table class="data"><thead><tr><th>#</th><th>What this line does</th><th>In plain English</th></tr></thead><tbody><tr><td class="marker">①</td><td>two <code>re.sub</code> calls</td><td>"First wipe out comments (<code>/* … */</code> and <code>// …</code>) so they can't fool the parser. <code>re.sub</code> = find-and-replace with regex."</td></tr><tr><td class="marker">②</td><td><code>_collect_objc_method_declarations</code></td><td>"Find every method declaration in the header and hand back a list of clean one-line strings (see below)."</td></tr><tr><td class="marker">③</td><td><code>re.match(r"^\s*([+\-])\s*\(([^)]+)\)\s*(.+);\s*$", …)</code></td><td>"Split one declaration into three parts: the kind sign (<code>+</code>/<code>-</code>), the return type in <code>( )</code>, and everything else up to the <code>;</code>."</td></tr><tr><td class="marker">④</td><td><code>m.group(1), (2), (3)</code></td><td>"Name those three parts: <code>kind_sign</code>, <code>return_type</code>, <code>rest</code>."</td></tr><tr><td class="marker">⑤</td><td><code>_objc_extract_selector(rest)</code></td><td>"Run the character-walker on <code>rest</code> to build the selector string."</td></tr><tr><td class="marker">⑥</td><td><code>"static_method" if kind_sign == "+"</code></td><td>"<code>+</code> = a class (static) method, <code>-</code> = an instance method. Record which."</td></tr><tr><td class="marker">⑦</td><td><code>_normalize_signature(rest, return_type)</code></td><td>"Make a stable, whitespace-squashed signature so a later run can tell if the method <em>changed</em> (same helper as Java/Kotlin)."</td></tr><tr><td class="marker">⑧</td><td><code>surface.add(Symbol(...))</code></td><td>"Record it: file, kind, the selector as its <code>name</code>, and the signature."</td></tr></tbody></table></div>
+<div class="callout callout--info"><span class="callout__label">Beginner sidebar &middot; what is <code>+</code> vs <code>-</code> in Objective-C?</span><p>In Obj-C, a method declaration starts with a sign. <code>-</code> means an <strong>instance method</strong> (call it on an object), <code>+</code> means a <strong>class method</strong> (call it on the class itself — like Java's <code>static</code>). The tool keeps this distinction by storing <code>kind = "method"</code> or <code>"static_method"</code>.</p></div>
+<div class="callout callout--info"><span class="callout__label">Beginner sidebar &middot; what does <code>re.sub</code> do (and <code>re.DOTALL</code>)?</span><p><code>re.sub(pattern, replacement, text)</code> is <strong>find-and-replace</strong> using a <a href="glossary.html">regex</a>. Here the replacement is <code>""</code> (empty), so it <em>deletes</em> matches — every comment. The <code>flags=re.DOTALL</code> makes <code>.</code> also match newlines, so a <code>/* … */</code> comment spanning many lines is removed in one go.</p></div>
+<h2>Finding declarations: <code>_OBJC_DECL_RE</code> + <code>_collect_objc_method_declarations</code></h2>
+<div class="code-card"><div class="code-card__head">tools/diff_native_api.py<span class="code-card__lang">python</span></div><pre>_OBJC_DECL_RE = re.compile(
+    r"^[ \t]*([+\-])[ \t]*\([^)]+\)[^;{]*?;",      # ①
+    flags=re.MULTILINE | re.DOTALL,
+)
+
+def _collect_objc_method_declarations(text: str) -&gt; List[str]:
+    return [m.group(0) for m in _OBJC_DECL_RE.finditer(text)]   # ②</pre></div>
+<div class="table-wrap"><table class="data"><thead><tr><th>#</th><th>What this line does</th><th>In plain English</th></tr></thead><tbody><tr><td class="marker">①</td><td>the declaration regex</td><td>"Match a line that starts (after spaces/tabs) with <code>+</code> or <code>-</code>, then <code>(returnType)</code>, then anything up to the first <code>;</code> — but NOT if a <code>{</code> appears first (that would be a method <em>body</em>)."</td></tr><tr><td class="marker">②</td><td><code>[m.group(0) for m in …finditer(text)]</code></td><td>"Run the pattern over the whole file and collect every full match into a list. <code>finditer</code> = 'give me every match, one by one.'"</td></tr></tbody></table></div>
+<div class="callout callout--info"><span class="callout__label">Beginner sidebar &middot; <code>finditer</code> and list comprehensions</span><p><code>_OBJC_DECL_RE.finditer(text)</code> yields <strong>every</strong> place the pattern matches, not just the first. The <code>[m.group(0) for m in …]</code> around it is a <strong>list comprehension</strong> — Python shorthand for "build a list by looping." Read it as: "for each match <code>m</code>, take its whole text <code>m.group(0)</code>, collect them."</p></div>
+<h2>The star of the page: <code>_objc_extract_selector</code></h2>
+<p>This is the state machine from the diagram, in code. Read it next to the diagram above.</p>
+<div class="code-card"><div class="code-card__head">tools/diff_native_api.py<span class="code-card__lang">python</span></div><pre>def _objc_extract_selector(rest: str) -&gt; str:
+    parts: List[str] = []
+    i = 0
+    n = len(rest)
+    while i &lt; n:
+        while i &lt; n and rest[i].isspace():     # ① skip whitespace
+            i += 1
+        if i &gt;= n:
+            break
+        ident_match = re.match(r"\w+", rest[i:])   # ② read an identifier
+        if not ident_match:
+            break
+        ident = ident_match.group(0)
+        i += len(ident)
+        if i &lt; n and rest[i] == ":":           # ③ is it followed by ':'?
+            parts.append(ident + ":")          # ④ keep the labelled part "ident:"
+            i += 1
+            if i &lt; n and rest[i] == "(":        # ⑤ skip the '(type)' clause...
+                depth = 1
+                i += 1
+                while i &lt; n and depth &gt; 0:      # ⑥ ...counting nested parens
+                    if rest[i] == "(":
+                        depth += 1
+                    elif rest[i] == ")":
+                        depth -= 1
+                    i += 1
+            while i &lt; n and rest[i].isspace():
+                i += 1
+            param_name = re.match(r"\w+", rest[i:])   # ⑦ skip the parameter name
+            if param_name:
+                i += len(param_name.group(0))
+        else:
+            if not parts:                       # ⑧ no ':' → a no-arg selector
+                parts.append(ident)
+            break
+    return "".join(parts) if parts else ""      # ⑨ glue the parts together</pre></div>
+<div class="table-wrap"><table class="data"><thead><tr><th>#</th><th>What this line does</th><th>In plain English</th></tr></thead><tbody><tr><td class="marker">①</td><td>inner whitespace loop</td><td>"Step over any spaces before the next word."</td></tr><tr><td class="marker">②</td><td><code>re.match(r"\w+", rest[i:])</code></td><td>"Read one identifier (a run of letters/digits/<code>_</code>) starting here."</td></tr><tr><td class="marker">③</td><td><code>rest[i] == ":"</code></td><td>"After the word, is there a colon? A colon means 'this label takes an argument.'"</td></tr><tr><td class="marker">④</td><td><code>parts.append(ident + ":")</code></td><td>"Keep the labelled piece, e.g. <code>recordEvent:</code> — colon included, it's part of the selector."</td></tr><tr><td class="marker">⑤</td><td><code>rest[i] == "("</code></td><td>"The next thing is the parameter's type in parentheses, e.g. <code>(NSString *)</code>. We don't want it — skip it."</td></tr><tr><td class="marker">⑥</td><td>the <code>depth</code> loop</td><td>"Walk past the parens, counting <code>(</code> up and <code>)</code> down, so nested parens like <code>(void(^)(BOOL))</code> are skipped correctly."</td></tr><tr><td class="marker">⑦</td><td>skip <code>param_name</code></td><td>"After the type comes the parameter's <em>variable</em> name (e.g. <code>event</code>). Skip that too — it's not part of the selector."</td></tr><tr><td class="marker">⑧</td><td>the <code>else</code> branch</td><td>"If there was NO colon, this is a no-argument method like <code>registerForPush</code>. Keep it (only if we haven't started a multi-part selector) and stop."</td></tr><tr><td class="marker">⑨</td><td><code>"".join(parts)</code></td><td>"Glue all the labelled pieces into one string: <code>recordEvent:withProps:</code>."</td></tr></tbody></table></div>
+<div class="callout callout--info"><span class="callout__label">Beginner sidebar &middot; why count parentheses with <code>depth</code>?</span><p>A simple "find the next <code>)</code>" would break on a type like <code>(void (^)(BOOL success))</code> — there are parens <em>inside</em> parens. The <code>depth</code> counter goes <strong>up</strong> on every <code>(</code> and <strong>down</strong> on every <code>)</code>, and we only stop when it returns to <code>0</code>. That guarantees we skip the <em>whole</em> type clause, no matter how nested. This is the same balanced-counting idea as <code>_stitch_until_parens_balance</code> on page 03.</p></div>
+<div class="callout callout--info"><span class="callout__label">Beginner sidebar &middot; what is a "selector"?</span><p>In Objective-C the <strong>selector</strong> is the method's full name — all its labels joined with their colons. <code>recordEvent:withProps:</code> is one selector with two arguments. It's the iOS equivalent of a Java method name, and it's what the tool stores as the symbol's <code>name</code> so old-vs-new can be diffed.</p></div>
+<h2>Shared with Java/Kotlin: <code>_normalize_signature</code></h2>
+<p>Both Android and iOS funnel into the <strong>same</strong> signature normalizer, so signatures are comparable in a consistent shape:</p>
+<div class="code-card"><div class="code-card__head">tools/diff_native_api.py<span class="code-card__lang">python</span></div><pre>def _normalize_signature(params: str, return_type: str) -&gt; str:
+    p = re.sub(r"\s+", " ", params).strip()       # squash runs of whitespace to one space
+    r = re.sub(r"\s+", " ", return_type).strip()
+    return f"({p}) -&gt; {r}"                          # canonical "(params) -&gt; returnType"</pre></div>
+<p>It just collapses messy whitespace and formats everything as <code>(params) -&gt; returnType</code>. Two declarations that differ <em>only</em> in spacing produce the <strong>same</strong> normalized signature — so the diff won't cry "changed!" over a stylistic reformat. (It's best-effort; the docstring admits false positives are possible and left for the engineer to triage.)</p>
+<hr>
+<h2>Check yourself</h2>
+<details class="qa"><summary>1. Turn <code>recordEvent:(NSString *)event withProps:(NSDictionary *)props</code> into a selector by hand.</summary><div class="qa-body"><p>**<code>recordEvent:withProps:</code>** — keep each label plus its colon, drop every <code>(type)</code> and parameter name. That's exactly what <code>_objc_extract_selector</code> produces.</p></div></details>
+<details class="qa"><summary>2. Why does the walker count paren <code>depth</code> instead of just looking for the next <code>)</code>?</summary><div class="qa-body"><p>Because parameter types can contain <strong>nested</strong> parens (e.g. a block type like <code>(void(^)(BOOL))</code>). Counting depth up/down and stopping at <code>0</code> skips the whole type clause correctly; "next <code>)</code>" would stop too early.</p></div></details>
+<details class="qa"><summary>3. What's the difference between a <code>+</code> and a <code>-</code> declaration, and how does the tool record it?</summary><div class="qa-body"><p><code>+</code> is a class/static method, <code>-</code> is an instance method. The tool sets <code>kind = "static_method" if kind_sign == "+" else "method"</code>.</p></div></details>
+<details class="qa"><summary>4. Both Java and Obj-C call <code>_normalize_signature</code>. Why share it?</summary><div class="qa-body"><p>So signatures are compared in one canonical shape (<code>(params) -&gt; returnType</code>, whitespace squashed) regardless of platform. That keeps "changed" detection consistent and avoids false alarms from mere formatting differences.</p></div></details>
+<p><strong>Next:</strong> <a href="walk-diff-05-diffing.html">05 — diffing the two surfaces (added / removed / changed) →</a></p>
+  </main>
+
+  <footer class="kit-foot">
+    <a href="walk-diff-03-surface-extraction-java-kotlin.html">&#9664; Java/Kotlin Extraction</a>
+    <a class="home" href="index.html">&#8962; Kit home</a>
+    <a href="walk-diff-05-diffing.html">Diffing &#9654;</a>
+  </footer>
+
+<script>
+
+  const config = {
+    fitPadding: 28,
+    minHeight: 360,
+    maxHeightPx: 1100,
+    maxHeightVh: 0.86,
+    maxInitialZoom: 1.8,
+    minZoom: 0.08,
+    maxZoom: 6.5,
+    zoomStep: 0.14,
+    readabilityFloor: 0.5
+  };
+
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  let activeDrag = null;
+  addEventListener('mousemove', (e) => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const pageBg = isDark ? '#0b1626' : '#eef2f7';
+
+
+  function initDiagram(shell) {
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if (!wrap || !viewport || !canvas || !source || !label) {
+      console.error('initDiagram: missing required elements in', shell);
+      return;
+    }
+
+    let zoom = 1, fitMode = 'contain', panX = 0, panY = 0, svgW = 0, svgH = 0;
+    let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+
+    function constrainPan() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const rW = svgW * zoom, rH = svgH * zoom, pad = config.fitPadding;
+      panX = (rW + pad * 2 <= vpW) ? (vpW - rW) / 2 : clamp(panX, vpW - rW - pad, pad);
+      panY = (rH + pad * 2 <= vpH) ? (vpH - rH) / 2 : clamp(panY, vpH - rH - pad, pad);
+    }
+    function applyTransform() {
+      const svg = canvas.querySelector('svg');
+      if (!svg || !svgW) return;
+      constrainPan();
+      svg.style.width = (svgW * zoom) + 'px';
+      svg.style.height = (svgH * zoom) + 'px';
+      canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom * 100) + '% — ' + fitMode;
+    }
+    function canPan() {
+      const rW = svgW * zoom, rH = svgH * zoom;
+      return rW + config.fitPadding * 2 > viewport.clientWidth
+          || rH + config.fitPadding * 2 > viewport.clientHeight;
+    }
+    function computeSmartFit() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const aW = Math.max(80, vpW - config.fitPadding * 2);
+      const aH = Math.max(80, vpH - config.fitPadding * 2);
+      const contain = Math.min(aW / svgW, aH / svgH);
+      let z = contain, mode = 'contain';
+      if (contain < config.readabilityFloor) {
+        const chartR = svgH / svgW, vpR = vpH / Math.max(vpW, 1);
+        if (chartR >= vpR) { z = aW / svgW; mode = 'width-priority'; }
+        else { z = aH / svgH; mode = 'height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram() {
+      if (!svgW) return;
+      const fit = computeSmartFit();
+      zoom = fit.zoom; fitMode = fit.mode;
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function setOneToOne() {
+      zoom = clamp(1, config.minZoom, config.maxZoom);
+      fitMode = '1:1';
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function zoomAround(factor, cx, cy) {
+      const next = clamp(zoom * factor, config.minZoom, config.maxZoom);
+      const ratio = next / zoom;
+      panX = cx - ratio * (cx - panX);
+      panY = cy - ratio * (cy - panY);
+      zoom = next; fitMode = 'custom';
+      applyTransform();
+    }
+    function readSvgNaturalSize(svg) {
+      let w = 0, h = 0;
+      if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
+      if (!w) { w = parseFloat(svg.getAttribute('width')) || 0; h = parseFloat(svg.getAttribute('height')) || 0; }
+      if (!w) { const b = svg.getBBox(); w = b.width; h = b.height; }
+      if (!w) { const r = svg.getBoundingClientRect(); w = r.width || 1000; h = r.height || 700; }
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight() {
+      if (!svgW) return;
+      const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+      const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
+      const maxVp = Math.floor(innerHeight * config.maxHeightVh);
+      const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight + 40, maxVp));
+      wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + 'px';
+    }
+    function openInNewTab() {
+      const svg = canvas.querySelector('svg');
+      if (!svg) return;
+      const clone = svg.cloneNode(true);
+      clone.style.width = ''; clone.style.height = '';
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Diagram</title><style>
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:${pageBg};padding:40px;box-sizing:border-box}
+      svg{max-width:100%;max-height:90vh;height:auto}
+      </style></head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    }
+    function render() {
+      const svgNode = canvas.querySelector('svg');
+      if (!svgNode) { label.textContent = 'Error: No diagram'; return; }
+      const size = readSvgNaturalSize(svgNode);
+      svgW = size.w; svgH = size.h;
+      svgNode.removeAttribute('width');
+      svgNode.removeAttribute('height');
+      svgNode.style.maxWidth = 'none';
+      svgNode.style.display = 'block';
+      setAdaptiveHeight();
+      fitDiagram();
+    }
+
+    const actions = {
+      'zoom-in': () => zoomAround(1 + config.zoomStep, viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-out': () => zoomAround(1 / (1 + config.zoomStep), viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-fit': fitDiagram,
+      'zoom-one': setOneToOne,
+      'zoom-expand': openInNewTab
+    };
+    Object.entries(actions).forEach(([action, handler]) => {
+      wrap.querySelector(`[data-action="${action}"]`)?.addEventListener('click', handler);
+    });
+
+    viewport.addEventListener('dblclick', fitDiagram);
+
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep);
+        zoomAround(factor, e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+      if (canPan()) {
+        e.preventDefault();
+        panX -= e.deltaX; panY -= e.deltaY;
+        applyTransform();
+      }
+    }, { passive: false });
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.zoom-controls') || !canPan()) return;
+      wrap.classList.add('is-panning');
+      sx = e.clientX; sy = e.clientY; spx = panX; spy = panY;
+      e.preventDefault();
+      activeDrag = {
+        onMove: (ev) => { panX = spx + (ev.clientX - sx); panY = spy + (ev.clientY - sy); applyTransform(); },
+        onEnd: () => { wrap.classList.remove('is-panning'); }
+      };
+    });
+
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx * dx + dy * dy);
+        const r = viewport.getBoundingClientRect();
+        touchCx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+        touchCy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      }
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && canPan()) {
+        if (touchDist > 0) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; touchDist = 0; }
+        e.preventDefault();
+        panX = spx + (e.touches[0].clientX - sx);
+        panY = spy + (e.touches[0].clientY - sy);
+        applyTransform();
+      } else if (e.touches.length === 2 && touchDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        zoomAround(d / touchDist, touchCx, touchCy);
+        touchDist = d;
+      }
+    }, { passive: false });
+
+    new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+
+    render();
+  }
+
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+</body>
+</html>

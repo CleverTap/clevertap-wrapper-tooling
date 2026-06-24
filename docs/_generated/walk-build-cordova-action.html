@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>build/cordova action — CleverTap Wrapper-Sync Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    /* accents: deep blue + gold, with semantic supporting tones */
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .grid > *, .flex > * { min-width: 0; }
+
+  body {
+    background-color: var(--bg);
+    /* blueprint grid: fine lines + heavier major lines */
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ LAYOUT (TOC + main) ============ */
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 44px;
+  }
+  .main { min-width: 0; }
+
+  /* ---- TOC ---- */
+  .toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    grid-row: 1 / -1;
+    padding: 16px 0;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+  }
+  .toc::-webkit-scrollbar { width: 3px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .toc-mark {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 0 0 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc a {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.35;
+    margin-bottom: 1px;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface2); }
+  .toc a.active { color: var(--text-bright); border-left-color: var(--gold); background: var(--surface2); }
+
+  /* ============ HERO ============ */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 22px;
+    height: 1px;
+    background: var(--gold);
+  }
+  h1 {
+    font-size: clamp(30px, 4.4vw, 50px);
+    font-weight: 700;
+    letter-spacing: -1.2px;
+    line-height: 1.04;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: clamp(16px, 1.1vw + 12px, 19px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 70ch;
+    margin-bottom: 12px;
+  }
+  .lead strong { color: var(--text); font-weight: 600; }
+  .lead code, .caption code, .terms code, .ve-card code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .chip::before {
+    content: '';
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c, var(--gold));
+  }
+
+  /* ============ SECTION HEADS ============ */
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 56px 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 24px;
+  }
+  .sec-head__num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    border: 1px solid var(--border-bright);
+    border-radius: 5px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .sec-head__title {
+    font-size: clamp(20px, 2.4vw, 27px);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-bright);
+  }
+  .sec-intro {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    max-width: 74ch;
+    margin: 14px 0 22px;
+  }
+
+  /* ============ MERMAID CONTAINER (from template) ============ */
+  .diagram-shell { position: relative; }
+  .diagram-shell__hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    opacity: 0.75;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .diagram-shell__hint::before {
+    content: '⌖';
+    color: var(--gold);
+    font-size: 13px;
+  }
+
+  .mermaid-wrap {
+    position: relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 32px 24px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+    cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+
+  .zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+    z-index: 10;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 2px;
+    box-shadow: 0 1px 4px rgba(13, 25, 41, 0.08);
+  }
+  .zoom-controls button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--gold); }
+
+  .mermaid-viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+  }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 0 6px;
+    align-self: center;
+    white-space: nowrap;
+  }
+
+  /* ============ MERMAID SVG OVERRIDES ============ */
+  .mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 16px !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; font-family: var(--font-mono) !important; font-size: 12.5px !important; }
+  .mermaid .edgeLabel rect, .mermaid .edgeLabel foreignObject { fill: var(--surface) !important; }
+  .mermaid .cluster rect { stroke-width: 1.25px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+  .mermaid .edge-pattern-solid { stroke-width: 1.5px !important; }
+  /* sequence diagram */
+  .mermaid .actor { stroke-width: 1.5px !important; }
+  .mermaid text.actor, .mermaid .actor > tspan { font-family: var(--font-body) !important; }
+  .mermaid .messageText { font-family: var(--font-mono) !important; font-size: 12px !important; fill: var(--text) !important; }
+  .mermaid .loopText, .mermaid .loopText tspan { font-family: var(--font-mono) !important; fill: var(--text-dim) !important; }
+  .mermaid .noteText { font-family: var(--font-body) !important; }
+
+  /* ============ CAPTION ============ */
+  .caption {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+  .caption strong { color: var(--text); font-weight: 600; }
+
+  /* ============ ONION LEGEND ============ */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border-bright); }
+
+  /* ============ KEY TERMS ============ */
+  .terms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .term {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 15px 17px;
+    position: relative;
+  }
+  .term--hero {
+    background: color-mix(in srgb, var(--surface) 90%, var(--gold) 10%);
+    border-color: color-mix(in srgb, var(--border) 40%, var(--gold) 60%);
+    box-shadow: 0 3px 14px rgba(13, 25, 41, 0.07);
+    grid-column: 1 / -1;
+  }
+  .term__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .term__label::before {
+    content: '';
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+  }
+  .term p { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+  .term p strong { color: var(--text); font-weight: 600; }
+
+  .pullquote {
+    margin: 28px 0 8px;
+    padding: 4px 0 4px 22px;
+    border-left: 3px solid var(--gold);
+  }
+  .pullquote p {
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.4;
+    color: var(--text-bright);
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1000px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 0 20px 28px; }
+    .toc {
+      position: sticky; top: 0; z-index: 200;
+      grid-row: auto; max-height: none;
+      display: flex; gap: 4px; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      margin: 0 -20px 4px;
+    }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc-title, .toc-mark { display: none; }
+    .toc a {
+      white-space: nowrap; flex-shrink: 0;
+      border-left: none; border-bottom: 2px solid transparent;
+      border-radius: 4px 4px 0 0; padding: 6px 10px; font-size: 10.5px;
+    }
+    .toc a.active { border-left: none; border-bottom-color: var(--gold); }
+    .main { padding-top: 22px; }
+    .sec-head { scroll-margin-top: 54px; }
+  }
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+</style>
+
+<style>
+  /* ====== KIT PAGE CHROME (content pages) ====== */
+  .kit-nav, .kit-foot {
+    max-width: 1000px; margin: 0 auto; display: flex;
+    align-items: center; justify-content: space-between; gap: 16px;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-nav {
+    padding: 18px 40px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .kit-nav a, .kit-foot a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover, .kit-foot a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    flex: 1; text-align: center; color: var(--text-dim);
+    letter-spacing: 1.5px; text-transform: uppercase; font-size: 10.5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kit-foot {
+    margin-top: 64px; padding: 24px 40px 48px; border-top: 1px solid var(--border);
+  }
+  .kit-content {
+    max-width: 1000px; margin: 0 auto; padding: 36px 40px 0;
+  }
+  .kit-content > * { animation: fadeUp 0.45s ease-out both; }
+
+  .page-eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  }
+  .page-eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  .kit-content h1 { margin-bottom: 20px; }
+
+  .kit-content h2 {
+    font-size: clamp(19px, 2.2vw, 25px); font-weight: 600; letter-spacing: -0.5px;
+    color: var(--text-bright); margin: 48px 0 8px; padding-bottom: 11px;
+    border-bottom: 1px solid var(--border); scroll-margin-top: 80px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .kit-content h2 .h2-mark {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--gold);
+    border: 1px solid var(--border-bright); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;
+  }
+  .kit-content h3 {
+    font-size: 16.5px; font-weight: 600; color: var(--text-bright); margin: 28px 0 6px;
+  }
+  .kit-content p { font-size: 15px; line-height: 1.7; color: var(--text); margin: 12px 0; }
+  .kit-content p.muted { color: var(--text-dim); }
+  .kit-content ul, .kit-content ol { margin: 12px 0 12px 22px; }
+  .kit-content li { font-size: 15px; line-height: 1.7; color: var(--text); margin: 5px 0; }
+  .kit-content strong { color: var(--text-bright); font-weight: 600; }
+  .kit-content em { font-style: italic; }
+  .kit-content a { color: var(--accent); }
+  .kit-content code {
+    font-family: var(--font-mono); font-size: 0.84em; background: var(--blue-dim);
+    color: var(--blue); padding: 1px 5px; border-radius: 3px;
+  }
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+
+  /* ====== CODE CARD ====== */
+  .code-card {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: 9px; margin: 18px 0; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(13,25,41,0.05);
+  }
+  .code-card__head {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  }
+  .code-card__head .lang {
+    color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .code-card__head .file { color: var(--text); }
+  .code-card pre {
+    margin: 0; padding: 16px 18px; overflow-x: auto;
+    font-family: var(--font-mono); font-size: 12.8px; line-height: 1.65;
+    color: var(--text); white-space: pre-wrap; word-break: break-word;
+  }
+  .code-card pre .marker { color: var(--gold); font-weight: 600; }
+
+  /* ====== CALLOUTS ====== */
+  .callout {
+    border: 1px solid var(--border); border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 18px 0;
+    background: var(--cbg, var(--surface));
+  }
+  .callout__label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--c, var(--blue));
+    margin-bottom: 7px; display: flex; align-items: center; gap: 7px;
+  }
+  .callout__label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .callout p { margin: 6px 0; font-size: 14px; line-height: 1.65; color: var(--text); }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--amber { --c: var(--amber); --cbg: var(--amber-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ====== DATA TABLE ====== */
+  .data-table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.data-table th, table.data-table td {
+    text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.6;
+  }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--surface2); color: var(--text-bright);
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; font-weight: 600; z-index: 1;
+  }
+  table.data-table tbody tr:nth-child(odd) { background: var(--surface); }
+  table.data-table tbody tr:nth-child(even) { background: var(--surface2); }
+  table.data-table tbody tr:hover { background: var(--blue-dim); }
+  table.data-table td.num { text-align: right; font-family: var(--font-mono); color: var(--gold); }
+  table.data-table code { background: var(--blue-dim); }
+
+  /* ====== DETAILS (Check yourself) ====== */
+  .check-block { margin: 20px 0; }
+  .check-block .check-head {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin: 26px 0 12px;
+  }
+  .check-block .check-head::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  details.qcard {
+    border: 1px solid var(--border); border-radius: 9px; margin: 10px 0;
+    background: var(--surface); overflow: hidden;
+  }
+  details.qcard[open] { border-color: var(--border-bright); }
+  details.qcard summary {
+    cursor: pointer; list-style: none; padding: 13px 16px; font-size: 14.5px;
+    font-weight: 500; color: var(--text-bright); display: flex; gap: 10px; align-items: flex-start;
+  }
+  details.qcard summary::-webkit-details-marker { display: none; }
+  details.qcard summary::before {
+    content: 'Q'; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--gold); border: 1px solid var(--border-bright); border-radius: 4px;
+    padding: 1px 6px; flex-shrink: 0; margin-top: 1px;
+  }
+  details.qcard[open] summary { border-bottom: 1px solid var(--border); background: var(--surface2); }
+  details.qcard .answer { padding: 14px 16px 16px; font-size: 14px; line-height: 1.7; color: var(--text); }
+  details.qcard .answer p { margin: 0 0 8px; }
+  details.qcard .answer p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 700px) {
+    .kit-nav, .kit-foot, .kit-content { padding-left: 20px; padding-right: 20px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+
+</head>
+<body>
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">WALKTHROUGHS · THE CORDOVA BUILD ACTION</span>
+  <a href="walk-orchestrator-prompt-cordova.html">Next: Reading the Prompt as a Program &#9654;</a>
+</nav>
+
+<main class="kit-content">
+<div class="page-eyebrow">walkthroughs · the build verifier</div>
+<h1><code>build/cordova</code> action — rebuilding the example app</h1>
+<div class="callout callout--info">
+  <div class="callout__label">In one sentence</div>
+  <p>This composite action regenerates the Cordova example app's platforms against the (possibly Claude-bumped) <code>plugin.xml</code> and tries to build Android and/or iOS — capturing per-platform <em>outcomes</em> without itself failing.</p>
+  <p><strong>File:</strong> <code>.github/actions/build/cordova/action.yml</code>.</p>
+</div>
+<p>This is the <strong>build verifier</strong>. The conductor calls it twice: <strong>pre-sync</strong> (does it build <em>before</em> Claude touches anything? — abort early if not, to save Claude cost) and <strong>post-sync</strong> (does it <em>still</em> build after Claude's edits? — open the PR with a <code>build-failed</code> label if not). This page is annotated highlights — the CI-specific quirks are what matter.</p>
+<h2><span class="h2-mark">◎</span>The shape (read this first)</h2>
+<section class="diagram-shell">
+  <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom &middot; drag to pan &middot; double-click to fit &middot; &#9215; opens full size</p>
+  <div class="mermaid-wrap">
+    <div class="zoom-controls">
+      <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+      <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+      <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+      <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+      <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+      <span class="zoom-label">Loading&hellip;</span>
+    </div>
+    <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"><style>foreignObject div { overflow: visible !important; }</style><svg id="mermaid-1781628173547" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 514.515625px;" viewBox="0 0 514.515625 1248.703125" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#mermaid-1781628173547{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#mermaid-1781628173547 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#mermaid-1781628173547 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#mermaid-1781628173547 .error-icon{fill:#552222;}#mermaid-1781628173547 .error-text{fill:#552222;stroke:#552222;}#mermaid-1781628173547 .edge-thickness-normal{stroke-width:1px;}#mermaid-1781628173547 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1781628173547 .edge-pattern-solid{stroke-dasharray:0;}#mermaid-1781628173547 .edge-thickness-invisible{stroke-width:0;fill:none;}#mermaid-1781628173547 .edge-pattern-dashed{stroke-dasharray:3;}#mermaid-1781628173547 .edge-pattern-dotted{stroke-dasharray:2;}#mermaid-1781628173547 .marker{fill:#333333;stroke:#333333;}#mermaid-1781628173547 .marker.cross{stroke:#333333;}#mermaid-1781628173547 svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mermaid-1781628173547 p{margin:0;}#mermaid-1781628173547 .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1781628173547 .cluster-label text{fill:#333;}#mermaid-1781628173547 .cluster-label span{color:#333;}#mermaid-1781628173547 .cluster-label span p{background-color:transparent;}#mermaid-1781628173547 .label text,#mermaid-1781628173547 span{fill:#333;color:#333;}#mermaid-1781628173547 .node rect,#mermaid-1781628173547 .node circle,#mermaid-1781628173547 .node ellipse,#mermaid-1781628173547 .node polygon,#mermaid-1781628173547 .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#mermaid-1781628173547 .rough-node .label text,#mermaid-1781628173547 .node .label text,#mermaid-1781628173547 .image-shape .label,#mermaid-1781628173547 .icon-shape .label{text-anchor:middle;}#mermaid-1781628173547 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#mermaid-1781628173547 .rough-node .label,#mermaid-1781628173547 .node .label,#mermaid-1781628173547 .image-shape .label,#mermaid-1781628173547 .icon-shape .label{text-align:center;}#mermaid-1781628173547 .node.clickable{cursor:pointer;}#mermaid-1781628173547 .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#mermaid-1781628173547 .arrowheadPath{fill:#333333;}#mermaid-1781628173547 .edgePath .path{stroke:#333333;stroke-width:2.0px;}#mermaid-1781628173547 .flowchart-link{stroke:#333333;fill:none;}#mermaid-1781628173547 .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628173547 .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#mermaid-1781628173547 .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628173547 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-1781628173547 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid-1781628173547 .cluster text{fill:#333;}#mermaid-1781628173547 .cluster span{color:#333;}#mermaid-1781628173547 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#mermaid-1781628173547 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#mermaid-1781628173547 rect.text{fill:none;stroke-width:0;}#mermaid-1781628173547 .icon-shape,#mermaid-1781628173547 .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628173547 .icon-shape p,#mermaid-1781628173547 .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#mermaid-1781628173547 .icon-shape .label rect,#mermaid-1781628173547 .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628173547 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#mermaid-1781628173547 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#mermaid-1781628173547 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="mermaid-1781628173547_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628173547_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628173547_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628173547_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628173547_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628173547_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><g class="root"><g class="clusters"></g><g class="edgePaths"><path d="M239.387,86L239.387,90.167C239.387,94.333,239.387,102.667,239.387,110.333C239.387,118,239.387,125,239.387,128.5L239.387,132" id="L_A_B_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_A_B_0" data-points="W3sieCI6MjM5LjM4NjcxODc1LCJ5Ijo4Nn0seyJ4IjoyMzkuMzg2NzE4NzUsInkiOjExMX0seyJ4IjoyMzkuMzg2NzE4NzUsInkiOjEzNn1d" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M239.387,214L239.387,218.167C239.387,222.333,239.387,230.667,239.387,238.333C239.387,246,239.387,253,239.387,256.5L239.387,260" id="L_B_C_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_B_C_0" data-points="W3sieCI6MjM5LjM4NjcxODc1LCJ5IjoyMTR9LHsieCI6MjM5LjM4NjcxODc1LCJ5IjoyMzl9LHsieCI6MjM5LjM4NjcxODc1LCJ5IjoyNjR9XQ==" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M239.387,390L239.387,394.167C239.387,398.333,239.387,406.667,239.387,414.333C239.387,422,239.387,429,239.387,432.5L239.387,436" id="L_C_D_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_C_D_0" data-points="W3sieCI6MjM5LjM4NjcxODc1LCJ5IjozOTB9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo0MTV9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo0NDB9XQ==" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M239.387,542L239.387,546.167C239.387,550.333,239.387,558.667,239.387,566.333C239.387,574,239.387,581,239.387,584.5L239.387,588" id="L_D_E_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_D_E_0" data-points="W3sieCI6MjM5LjM4NjcxODc1LCJ5Ijo1NDJ9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo1Njd9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo1OTJ9XQ==" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M239.387,670L239.387,674.167C239.387,678.333,239.387,686.667,239.387,694.333C239.387,702,239.387,709,239.387,712.5L239.387,716" id="L_E_F_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_E_F_0" data-points="W3sieCI6MjM5LjM4NjcxODc1LCJ5Ijo2NzB9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo2OTV9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo3MjB9XQ==" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M239.387,798L239.387,802.167C239.387,806.333,239.387,814.667,239.387,822.333C239.387,830,239.387,837,239.387,840.5L239.387,844" id="L_F_G_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_F_G_0" data-points="W3sieCI6MjM5LjM4NjcxODc1LCJ5Ijo3OTh9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo4MjN9LHsieCI6MjM5LjM4NjcxODc1LCJ5Ijo4NDh9XQ==" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M205.859,927.176L188.592,938.93C171.325,950.685,136.792,974.194,119.525,993.449C102.258,1012.703,102.258,1027.703,102.258,1035.203L102.258,1042.703" id="L_G_H_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_G_H_0" data-points="W3sieCI6MjA1Ljg1OTI0Mzg0OTM1OTM2LCJ5Ijo5MjcuMTc1NjUwMDk5MzU5NH0seyJ4IjoxMDIuMjU3ODEyNSwieSI6OTk3LjcwMzEyNX0seyJ4IjoxMDIuMjU3ODEyNSwieSI6MTA0Ni43MDMxMjV9XQ==" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M272.914,927.176L290.181,938.93C307.448,950.685,341.982,974.194,359.249,991.449C376.516,1008.703,376.516,1019.703,376.516,1025.203L376.516,1030.703" id="L_G_I_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_G_I_0" data-points="W3sieCI6MjcyLjkxNDE5MzY1MDY0MDY0LCJ5Ijo5MjcuMTc1NjUwMDk5MzU5NH0seyJ4IjozNzYuNTE1NjI1LCJ5Ijo5OTcuNzAzMTI1fSx7IngiOjM3Ni41MTU2MjUsInkiOjEwMzQuNzAzMTI1fV0=" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M102.258,1100.703L102.258,1106.87C102.258,1113.036,102.258,1125.37,110.581,1135.421C118.905,1145.473,135.552,1153.242,143.876,1157.127L152.199,1161.011" id="L_H_J_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_H_J_0" data-points="W3sieCI6MTAyLjI1NzgxMjUsInkiOjExMDAuNzAzMTI1fSx7IngiOjEwMi4yNTc4MTI1LCJ5IjoxMTM3LjcwMzEyNX0seyJ4IjoxNTUuODIzNzkxNTAzOTA2MjUsInkiOjExNjIuNzAzMTI1fV0=" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path><path d="M376.516,1112.703L376.516,1116.87C376.516,1121.036,376.516,1129.37,368.192,1137.421C359.869,1145.473,343.221,1153.242,334.898,1157.127L326.574,1161.011" id="L_I_J_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_I_J_0" data-points="W3sieCI6Mzc2LjUxNTYyNSwieSI6MTExMi43MDMxMjV9LHsieCI6Mzc2LjUxNTYyNSwieSI6MTEzNy43MDMxMjV9LHsieCI6MzIyLjk0OTY0NTk5NjA5Mzc1LCJ5IjoxMTYyLjcwMzEyNX1d" marker-end="url(#mermaid-1781628173547_flowchart-v2-pointEnd)"></path></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_A_B_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_B_C_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_C_D_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_D_E_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_E_F_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_F_G_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(102.2578125, 997.703125)"><g class="label" data-id="L_G_H_0" transform="translate(-12.453125, -12)"><foreignObject width="24.90625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>yes</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(376.515625, 997.703125)"><g class="label" data-id="L_G_I_0" transform="translate(-8.8984375, -12)"><foreignObject width="17.796875" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>no</p></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_H_J_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_I_J_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default  " id="flowchart-A-0" transform="translate(239.38671875, 47)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>Setup Java 17 + install Cordova CLI</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-B-1" transform="translate(239.38671875, 175)"><rect class="basic label-container" style="" x="-101.8203125" y="-39" width="203.640625" height="78"></rect><g class="label" style="" transform="translate(-71.8203125, -24)"><rect></rect><foreignObject width="143.640625" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>npm install<br>(deps + local plugin)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-C-3" transform="translate(239.38671875, 327)"><rect class="basic label-container" style="" x="-130" y="-63" width="260" height="126"></rect><g class="label" style="" transform="translate(-100, -48)"><rect></rect><foreignObject width="200" height="116"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>cordova platform rm android<br>cordova platform add android@14</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-D-5" transform="translate(239.38671875, 491)"><rect class="basic label-container" style="" x="-130" y="-51" width="260" height="102"></rect><g class="label" style="" transform="translate(-100, -36)"><rect></rect><foreignObject width="200" height="92"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>cordova plugin add ../../..<br>(re-applies plugin.xml SDK pin)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-E-7" transform="translate(239.38671875, 631)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>write google-services.json STUB</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-F-9" transform="translate(239.38671875, 759)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>cordova build android --debug</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-G-11" transform="translate(239.38671875, 904.3515625)"><polygon points="56.3515625,0 112.703125,-56.3515625 56.3515625,-112.703125 0,-56.3515625" class="label-container" transform="translate(-55.8515625, 56.3515625)"></polygon><g class="label" style="" transform="translate(-29.3515625, -12)"><rect></rect><foreignObject width="58.703125" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>rc == 0?</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-H-13" transform="translate(102.2578125, 1073.703125)"><rect class="basic label-container" style="" x="-94.2578125" y="-27" width="188.515625" height="54"></rect><g class="label" style="" transform="translate(-64.2578125, -12)"><rect></rect><foreignObject width="128.515625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>outcome=success</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-I-15" transform="translate(376.515625, 1073.703125)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>outcome=failure + ::warning::</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-J-17" transform="translate(239.38671875, 1201.703125)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>exit 0 (step itself NEVER fails)</p></span></div></foreignObject></g></g></g></g></g></svg></div></div>
+  </div>
+  <script type="text/plain" class="diagram-source">
+flowchart TD
+    A["Setup Java 17 + install Cordova CLI"] --> B["npm install<br/>(deps + local plugin)"]
+    B --> C["cordova platform rm android<br/>cordova platform add android@14"]
+    C --> D["cordova plugin add ../../..<br/>(re-applies plugin.xml SDK pin)"]
+    D --> E["write google-services.json STUB"]
+    E --> F["cordova build android --debug"]
+    F --> G{"rc == 0?"}
+    G -- "yes" --> H["outcome=success"]
+    G -- "no" --> I["outcome=failure + ::warning::"]
+    H --> J["exit 0 (step itself NEVER fails)"]
+    I --> J
+  </script>
+</section>
+<div class="callout callout--amber">
+  <div class="callout__label">Analogy</div>
+  <p>Before and after a mechanic works on your car, you start the engine to check it still runs. Pre-sync = &ldquo;did it run before I touched it?&rdquo; Post-sync = &ldquo;does it still run now?&rdquo; The mechanic doesn't refuse to give the car back if it won't start — they hand it over with a note (&ldquo;won't start&rdquo;). That note is the <code>outcome</code> output.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">01</span>Quirk 1 — platforms are regenerated, pinned to a major</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">bash</span><span class="file">.github/actions/build/cordova/action.yml</span></div>
+  <pre>        cordova platform rm android || true          # <span class="marker">①</span> throw away the committed platform
+        cordova platform add android@14              # <span class="marker">②</span> re-add it, pinned to cordova-android 14.x
+        ...
+        cordova platform rm ios || true
+        cordova platform add ios@7                    # iOS pinned to cordova-ios 7.x</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this does</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>platform rm android || true</code></td><td>&ldquo;Delete the checked-in <code>platforms/android</code> folder. <code>|| true</code> = 'if it's already gone, don't treat that as an error.'&rdquo;</td></tr>
+<tr><td>②</td><td><code>platform add android@14</code></td><td>&ldquo;Re-generate the platform from scratch, <strong>pinned to major 14</strong>. This rebuilds it against the <em>current</em> <code>plugin.xml</code> SDK pin.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<p><strong>Why regenerate?</strong> The committed platforms carry <strong>stale</strong> SDK pins (the action header notes Android 7.1.2 / iOS 5.1.2). After a sync, <code>plugin.xml</code> points at a new SDK version — but the old <code>platforms/</code> folder still references the old one. Deleting and re-adding forces Cordova to read the fresh <code>plugin.xml</code>. <strong>Why pin <code>@14</code> / <code>@7</code>?</strong> A bare <code>cordova platform add android</code> grabs the <em>latest</em> (15.x), whose <code>CoreAndroid.java</code> references <code>VERSION_CODES.BAKLAVA</code> (API 36) and won't compile against the installed SDK. Pinning to the major the example declares keeps the build reproducible.</p>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what does || true mean?</div>
+  <p>In bash, <code>A || B</code> runs <code>B</code> only if <code>A</code> <em>fails</em> (returns non-zero). <code>cordova platform rm android || true</code> therefore means &ldquo;try to remove the platform; if removal fails (e.g. it wasn't there), swallow the error and carry on.&rdquo; It's how you make a cleanup step non-fatal.</p>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is cordova plugin add ../../..?</div>
+  <p><code>../../..</code> is a <strong>relative path</strong> — three folders up from the example project — which is the root of the wrapper repo (the plugin itself). Adding the local plugin re-applies its <code>plugin.xml</code> <code>&lt;framework&gt;</code> / <code>&lt;pod&gt;</code> entries (the current SDK pin) and passes the test credentials as <code>--variable</code>s. The comment notes Cordova's auto-restore mis-resolves this relative path, so it's added explicitly.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">02</span>Quirk 2 — the google-services.json stub (a heredoc)</h2>
+<p>The Google Services Gradle plugin refuses to build without a valid <code>google-services.json</code>, and the one shipped in the plugin is a 0-byte stub. CI writes a syntactically valid one on the fly:</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">bash</span><span class="file">.github/actions/build/cordova/action.yml</span></div>
+  <pre>        mkdir -p platforms/android/app
+        cat &gt; platforms/android/app/google-services.json &lt;&lt;'EOF'   # <span class="marker">①</span> write a file from a heredoc
+        {
+          "project_info": { "project_number": "000000000000", ... },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:000000000000:android:00000...",
+                "android_client_info": { "package_name": "com.clevertap.example" }   # <span class="marker">②</span> MUST match the app id
+              },
+              "api_key": [ { "current_key": "STUB_CI_KEY_NOT_FOR_USE" } ],           # <span class="marker">③</span> obviously fake
+              ...
+            }
+          ],
+          "configuration_version": "1"
+        }
+        EOF</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this does</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>cat &gt; file &lt;&lt;'EOF' &hellip; EOF</code></td><td>&ldquo;A <strong>heredoc</strong>: everything between <code>&lt;&lt;'EOF'</code> and <code>EOF</code> is written verbatim into the file. The quotes around <code>'EOF'</code> mean 'don't expand <code>$variables</code> — write it literally.'&rdquo;</td></tr>
+<tr><td>②</td><td><code>package_name: com.clevertap.example</code></td><td>&ldquo;The Google Services plugin cross-checks this against the app's widget id. It must match the example's id or the build fails.&rdquo;</td></tr>
+<tr><td>③</td><td><code>STUB_CI_KEY_NOT_FOR_USE</code></td><td>&ldquo;A deliberately fake key. We only need the file to be <em>valid JSON of the right shape</em> — it's never used to call Google.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is a heredoc?</div>
+  <p>A heredoc lets you write a multi-line block straight into a command. <code>cat &gt; file &lt;&lt;'EOF'</code> says &ldquo;everything up to the next line that is just <code>EOF</code> is the input.&rdquo; With <code>cat &gt;</code>, that input becomes the file's contents. The single-quoted <code>'EOF'</code> disables variable expansion — handy here because the JSON is meant to be literal. See the <a href="glossary.html">Glossary</a>.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">03</span>Quirk 3 — the outcome-capture pattern (set +e &amp;rarr; rc=$? &amp;rarr; exit 0)</h2>
+<p>This is the most important pattern in the file, and it appears at the end of <em>both</em> the Android and iOS build steps:</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">bash</span><span class="file">.github/actions/build/cordova/action.yml</span></div>
+  <pre>        set +e                                       # <span class="marker">①</span> don't abort on a build failure
+        ...
+        cordova build android --debug                # <span class="marker">②</span> the build that might fail
+        rc=$?                                         # <span class="marker">③</span> capture its exit code
+        if [ $rc -eq 0 ]; then
+          echo "outcome=success" &gt;&gt; "$GITHUB_OUTPUT"   # <span class="marker">④</span> tell the conductor: success
+        else
+          echo "outcome=failure" &gt;&gt; "$GITHUB_OUTPUT"   # <span class="marker">④</span> tell the conductor: failure
+          echo "::warning::Cordova Android build (${{ inputs.phase }}) failed with $rc"
+        fi
+        exit 0                                        # <span class="marker">⑤</span> the STEP itself always succeeds</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this does</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>set +e</code></td><td>&ldquo;Turn off bash auto-abort so a failed build doesn't kill the step before we record the result.&rdquo;</td></tr>
+<tr><td>②</td><td><code>cordova build android --debug</code></td><td>&ldquo;The actual build. May pass or fail.&rdquo; (iOS uses <code>cordova build ios --emulator --debug</code> — unsigned, for the simulator, no provisioning in CI.)</td></tr>
+<tr><td>③</td><td><code>rc=$?</code></td><td>&ldquo;Save the build's exit code.&rdquo;</td></tr>
+<tr><td>④</td><td><code>echo "outcome=..." &gt;&gt; "$GITHUB_OUTPUT"</code></td><td>&ldquo;Write <code>outcome=success</code> or <code>outcome=failure</code> to the step's outputs file. This becomes the action's <code>android_outcome</code> / <code>ios_outcome</code> output.&rdquo;</td></tr>
+<tr><td>⑤</td><td><code>exit 0</code></td><td>&ldquo;<strong>The step exits 0 (success) regardless of the build result.</strong> The build's pass/fail is reported as <em>data</em> (the outcome output), not as the step's own success.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<p><strong>Why decouple the step's success from the build's success?</strong> Because the <em>conductor</em> decides what to do with a failed build, and that decision differs by phase. Look at the action's <code>outputs:</code> block:</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">.github/actions/build/cordova/action.yml</span></div>
+  <pre>outputs:
+  android_outcome:
+    description: 'success / failure / empty(skipped) for the Android build.'
+    value: ${{ steps.android.outputs.outcome }}     # surfaces the inner `outcome=` to the caller
+  ios_outcome:
+    description: 'success / failure / empty(skipped) for the iOS build.'
+    value: ${{ steps.ios.outputs.outcome }}</pre>
+</div>
+<ul>
+  <li><strong>Pre-sync:</strong> the conductor's <code>Pre-sync build gate</code> reads these and <code>exit 1</code>s if either is <code>failure</code> — aborting <em>before</em> spending Claude tokens.</li>
+  <li><strong>Post-sync:</strong> the conductor still opens the PR (with a <code>build-failed</code> label) and only afterwards re-asserts failure to turn the run red. See the <a href="walk-sync-yml.html">sync.yml gating page</a>.</li>
+</ul>
+<p>If the build step <em>itself</em> failed (non-zero exit), Actions' default skip-on-failure would derail this two-phase logic. <code>exit 0</code> keeps the build result purely as a value the conductor inspects.</p>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: step outputs vs step outcome</div>
+  <p>Two different things. The <strong>outcome</strong> is success/failure/skipped that Actions assigns to a step automatically. An <strong>output</strong> is a named value the step <em>chooses</em> to publish via <code>&gt;&gt; "$GITHUB_OUTPUT"</code>. This action deliberately makes its <em>outcome</em> always success and reports the build result as an <em>output</em> (<code>outcome=success|failure</code>) instead — so the caller, not Actions, decides the consequence.</p>
+</div>
+<div class="check-block">
+  <div class="check-head">Check yourself</div>
+<details class="qcard">
+  <summary>Why does the build step end with <code>exit 0</code> even when the build failed?</summary>
+  <div class="answer">
+    <p>So the <em>step's</em> outcome stays <code>success</code> and Actions doesn't auto-skip everything after it. The build's real result is published as an <strong>output</strong> (<code>outcome=failure</code>) that the conductor reads. That lets pre-sync abort-on-failure and post-sync open-the-PR-with-a-label behave differently from the same action.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why are the platforms removed and re-added instead of using the committed ones?</summary>
+  <div class="answer">
+    <p>The committed <code>platforms/</code> carry stale SDK pins (Android 7.1.2 / iOS 5.1.2). After a sync, <code>plugin.xml</code> points at a new version. <code>platform rm</code> + <code>platform add</code> regenerates them against the <em>current</em> <code>plugin.xml</code>, so the build actually exercises the bumped SDK.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why pin <code>cordova platform add android@14</code> instead of a bare <code>add</code>?</summary>
+  <div class="answer">
+    <p>A bare add fetches the latest cordova-android (15.x), whose <code>CoreAndroid.java</code> uses <code>VERSION_CODES.BAKLAVA</code> (API 36) and won't compile against the installed SDK. Pinning to major 14 — the version the example declares — keeps the build reproducible.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why write a stub <code>google-services.json</code> with a fake key?</summary>
+  <div class="answer">
+    <p>The Google Services Gradle plugin won't build without a valid-looking file, and the shipped one is a 0-byte stub. CI only needs valid JSON of the right shape with a matching <code>package_name</code> (<code>com.clevertap.example</code>) — the key is never used to contact Google, hence <code>STUB_CI_KEY_NOT_FOR_USE</code>.</p>
+  </div>
+</details>
+</div>
+</main>
+
+<footer class="kit-foot">
+  <a href="walk-claude-sync-action.html">&#9664; The Brain (claude-sync)</a>
+  <a href="index.html">&#8962; Kit home</a>
+  <a href="walk-orchestrator-prompt-cordova.html">Reading the Prompt as a Program &#9654;</a>
+</footer>
+
+<script>
+
+  const config = {
+    fitPadding: 28,
+    minHeight: 360,
+    maxHeightPx: 1100,
+    maxHeightVh: 0.86,
+    maxInitialZoom: 1.8,
+    minZoom: 0.08,
+    maxZoom: 6.5,
+    zoomStep: 0.14,
+    readabilityFloor: 0.5
+  };
+
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  let activeDrag = null;
+  addEventListener('mousemove', (e) => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const pageBg = isDark ? '#0b1626' : '#eef2f7';
+
+
+  function initDiagram(shell) {
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if (!wrap || !viewport || !canvas || !source || !label) {
+      console.error('initDiagram: missing required elements in', shell);
+      return;
+    }
+
+    let zoom = 1, fitMode = 'contain', panX = 0, panY = 0, svgW = 0, svgH = 0;
+    let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+
+    function constrainPan() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const rW = svgW * zoom, rH = svgH * zoom, pad = config.fitPadding;
+      panX = (rW + pad * 2 <= vpW) ? (vpW - rW) / 2 : clamp(panX, vpW - rW - pad, pad);
+      panY = (rH + pad * 2 <= vpH) ? (vpH - rH) / 2 : clamp(panY, vpH - rH - pad, pad);
+    }
+    function applyTransform() {
+      const svg = canvas.querySelector('svg');
+      if (!svg || !svgW) return;
+      constrainPan();
+      svg.style.width = (svgW * zoom) + 'px';
+      svg.style.height = (svgH * zoom) + 'px';
+      canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom * 100) + '% — ' + fitMode;
+    }
+    function canPan() {
+      const rW = svgW * zoom, rH = svgH * zoom;
+      return rW + config.fitPadding * 2 > viewport.clientWidth
+          || rH + config.fitPadding * 2 > viewport.clientHeight;
+    }
+    function computeSmartFit() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const aW = Math.max(80, vpW - config.fitPadding * 2);
+      const aH = Math.max(80, vpH - config.fitPadding * 2);
+      const contain = Math.min(aW / svgW, aH / svgH);
+      let z = contain, mode = 'contain';
+      if (contain < config.readabilityFloor) {
+        const chartR = svgH / svgW, vpR = vpH / Math.max(vpW, 1);
+        if (chartR >= vpR) { z = aW / svgW; mode = 'width-priority'; }
+        else { z = aH / svgH; mode = 'height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram() {
+      if (!svgW) return;
+      const fit = computeSmartFit();
+      zoom = fit.zoom; fitMode = fit.mode;
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function setOneToOne() {
+      zoom = clamp(1, config.minZoom, config.maxZoom);
+      fitMode = '1:1';
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function zoomAround(factor, cx, cy) {
+      const next = clamp(zoom * factor, config.minZoom, config.maxZoom);
+      const ratio = next / zoom;
+      panX = cx - ratio * (cx - panX);
+      panY = cy - ratio * (cy - panY);
+      zoom = next; fitMode = 'custom';
+      applyTransform();
+    }
+    function readSvgNaturalSize(svg) {
+      let w = 0, h = 0;
+      if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
+      if (!w) { w = parseFloat(svg.getAttribute('width')) || 0; h = parseFloat(svg.getAttribute('height')) || 0; }
+      if (!w) { const b = svg.getBBox(); w = b.width; h = b.height; }
+      if (!w) { const r = svg.getBoundingClientRect(); w = r.width || 1000; h = r.height || 700; }
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight() {
+      if (!svgW) return;
+      const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+      const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
+      const maxVp = Math.floor(innerHeight * config.maxHeightVh);
+      const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight + 40, maxVp));
+      wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + 'px';
+    }
+    function openInNewTab() {
+      const svg = canvas.querySelector('svg');
+      if (!svg) return;
+      const clone = svg.cloneNode(true);
+      clone.style.width = ''; clone.style.height = '';
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Diagram</title><style>
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:${pageBg};padding:40px;box-sizing:border-box}
+      svg{max-width:100%;max-height:90vh;height:auto}
+      </style></head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    }
+    function render() {
+      const svgNode = canvas.querySelector('svg');
+      if (!svgNode) { label.textContent = 'Error: No diagram'; return; }
+      const size = readSvgNaturalSize(svgNode);
+      svgW = size.w; svgH = size.h;
+      svgNode.removeAttribute('width');
+      svgNode.removeAttribute('height');
+      svgNode.style.maxWidth = 'none';
+      svgNode.style.display = 'block';
+      setAdaptiveHeight();
+      fitDiagram();
+    }
+
+    const actions = {
+      'zoom-in': () => zoomAround(1 + config.zoomStep, viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-out': () => zoomAround(1 / (1 + config.zoomStep), viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-fit': fitDiagram,
+      'zoom-one': setOneToOne,
+      'zoom-expand': openInNewTab
+    };
+    Object.entries(actions).forEach(([action, handler]) => {
+      wrap.querySelector(`[data-action="${action}"]`)?.addEventListener('click', handler);
+    });
+
+    viewport.addEventListener('dblclick', fitDiagram);
+
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep);
+        zoomAround(factor, e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+      if (canPan()) {
+        e.preventDefault();
+        panX -= e.deltaX; panY -= e.deltaY;
+        applyTransform();
+      }
+    }, { passive: false });
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.zoom-controls') || !canPan()) return;
+      wrap.classList.add('is-panning');
+      sx = e.clientX; sy = e.clientY; spx = panX; spy = panY;
+      e.preventDefault();
+      activeDrag = {
+        onMove: (ev) => { panX = spx + (ev.clientX - sx); panY = spy + (ev.clientY - sy); applyTransform(); },
+        onEnd: () => { wrap.classList.remove('is-panning'); }
+      };
+    });
+
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx * dx + dy * dy);
+        const r = viewport.getBoundingClientRect();
+        touchCx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+        touchCy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      }
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && canPan()) {
+        if (touchDist > 0) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; touchDist = 0; }
+        e.preventDefault();
+        panX = spx + (e.touches[0].clientX - sx);
+        panY = spy + (e.touches[0].clientY - sy);
+        applyTransform();
+      } else if (e.touches.length === 2 && touchDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        zoomAround(d / touchDist, touchCx, touchCy);
+        touchDist = d;
+      }
+    }, { passive: false });
+
+    new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+
+    render();
+  }
+
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+</body>
+</html>

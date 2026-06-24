@@ -1,0 +1,39 @@
+%% conductor-gating: sync.yml decision flow, with the key if: gates as diamonds.
+%% Hand-edited source of truth; render via visual-explainer; never hand-edit generated HTML.
+flowchart TD
+    START(["workflow_call<br/>(wrapper, versions, model, skip_sync)"]) --> CHK["Checkout tooling repo"]
+    CHK --> SETUP["Setup<br/>(mint token, checkout wrapper @base_ref,<br/>new branch, install Claude CLI)"]
+    SETUP --> CC["Resolve Claude config<br/>(prompt + tool allowlist per wrapper)"]
+    CC --> PRE["Build PRE-sync<br/>(example app, unchanged)"]
+
+    PRE --> GATE{"pre-sync build<br/>android or ios == failure?"}
+    GATE -->|"yes"| ABORT["exit 1 — abort<br/>(no Claude cost spent)"]
+    GATE -->|"no"| SKIP{"skip_sync?"}
+
+    SKIP -->|"true"| ENDSKIP["stop after pre-sync"]
+    SKIP -->|"false"| SA{"android_version != ''?"}
+
+    SA -->|"yes"| SYNCA["Sync Android<br/>(claude-sync)"]
+    SA -->|"no"| SI
+    SYNCA --> SI{"ios_version != ''?"}
+    SI -->|"yes"| SYNCI["Sync iOS<br/>(claude-sync)"]
+    SI -->|"no"| POST
+    SYNCI --> POST["Build POST-sync<br/>(rebuild on Claude edits)"]
+
+    POST --> OUTC["Compute post-sync outcomes<br/>(if: always())"]
+    OUTC --> COMMITQ{"!cancelled()<br/>AND no sync step failed<br/>AND a sync succeeded<br/>AND there are edits?"}
+
+    COMMITQ -->|"no"| NOPR["no PR<br/>(no-op or sync failed)"]
+    COMMITQ -->|"yes"| COMMIT["Commit + push branch"]
+    COMMIT --> OPENPR["Open combined PR<br/>(+ labels; build-failed label<br/>if post-sync build failed)"]
+
+    OPENPR --> COST["Compute + report cost<br/>(soft cap 3 USD)"]
+    COST --> FLAG{"post-sync build<br/>== failure?"}
+    FLAG -->|"yes"| REASSERT["exit 1 — re-assert failure<br/>(PR already open)"]
+    FLAG -->|"no"| DONE(["done"])
+    REASSERT --> SLACK{"failure()<br/>AND setup succeeded?"}
+    ABORT --> SLACK
+    SLACK -->|"yes"| PING["Slack ping on failure"]
+    SLACK -->|"no"| ART["Upload artifacts<br/>(stream.jsonl, output.json, APK/app)"]
+    PING --> ART
+    DONE --> ART

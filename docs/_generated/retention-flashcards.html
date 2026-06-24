@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards</title>
+<!--
+  Aesthetic: BLUEPRINT — technical-drawing feel, faint grid background,
+  deep slate/blue field with a gold accent, monospace labels, precise borders.
+  Font pairing: IBM Plex Sans + IBM Plex Mono. Light-first, dark variant via prefers-color-scheme.
+  Style block shared verbatim with system-overview.html, plus content-component styles.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px clamp(20px, 5vw, 56px);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-nav a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    color: var(--text-dim);
+    margin: 0 auto 0 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10.5px;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+
+  /* ============ CONTENT ============ */
+  .kit-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px clamp(20px, 5vw, 56px) 20px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.07;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(19px, 2.2vw, 24px);
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    color: var(--text-bright);
+    margin: 48px 0 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 64px;
+  }
+  h2 .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 28px 0 6px;
+  }
+
+  p { margin: 12px 0; color: var(--text); }
+  .kit-content > p, .callout p, li { color: var(--text); }
+  .lead {
+    font-size: clamp(15.5px, 1vw + 12px, 18px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--text); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ============ CODE BLOCK CARD ============ */
+  .code-card {
+    margin: 18px 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+  }
+  .code-card__label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 14px;
+  }
+  .code-card pre {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+  .code-card pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 9px 9px 0;
+    background: var(--cbg, var(--blue-dim));
+    padding: 14px 18px;
+  }
+  .callout__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .callout__label::before {
+    content: ''; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--c, var(--blue));
+  }
+  .callout p { font-size: 14px; margin: 6px 0; }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--note  { --c: var(--gold);  --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ============ DATA TABLE ============ */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface2);
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  tbody tr:nth-child(even) { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ============ DETAILS (Check yourself / FAQ) ============ */
+  details.qa {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.qa[open] { border-color: var(--border-bright); }
+  details.qa > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 44px 13px 16px;
+    position: relative;
+    font-weight: 600;
+    color: var(--text-bright);
+    font-size: 14.5px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::after {
+    content: '+';
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 18px; line-height: 1;
+    color: var(--gold);
+    transition: transform 0.2s;
+  }
+  details.qa[open] > summary::after { content: '\2212'; }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+  }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+
+  .check-head {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin: 40px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .check-head::before { content: ''; width: 22px; height: 1px; background: var(--green); }
+
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px;
+    margin: 40px auto 0;
+    padding: 20px clamp(20px, 5vw, 56px) 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-foot a { text-decoration: none; color: var(--accent); }
+  .kit-foot a:hover { color: var(--text-bright); }
+  .kit-foot a.home { color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .kit-nav .crumb { display: none; }
+  }
+
+  /* flashcard grid + flip-card */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; margin: 18px 0 8px; }
+  details.card { margin: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+  details.card[open] { border-color: var(--gold); box-shadow: 0 2px 10px rgba(13,25,41,0.07); }
+  details.card > summary { cursor: pointer; list-style: none; padding: 16px 40px 16px 16px; position: relative; font-weight: 600; color: var(--text-bright); font-size: 14px; min-height: 58px; display: flex; align-items: center; }
+  details.card > summary::-webkit-details-marker { display: none; }
+  details.card > summary::after { content: 'flip'; position: absolute; right: 12px; top: 12px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); }
+  details.card[open] > summary::after { content: 'front'; }
+  details.card > summary:hover { background: var(--surface2); }
+  details.card .card-back { padding: 0 16px 16px; border-top: 1px solid var(--border); color: var(--text); font-size: 13.5px; }
+  details.card .card-back p:first-child { margin-top: 12px; }
+  .topic-head { font-family: var(--font-mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: var(--gold); margin: 40px 0 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .topic-head .tnum { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Retention · <b>Flashcards</b></span>
+  <a href="retention-exercises.html">Next: Exercises &#9654;</a>
+</nav>
+
+<main class="kit-content">
+  <div class="eyebrow animate">Retention · Flashcards</div>
+  <h1 class="animate" style="--i:1">Flashcards — retrieve before you flip</h1>
+  <p class="lead animate" style="--i:2">
+    One card per <a href="glossary.html">glossary</a> term and per key concept. <strong>Cover the answer, say it out
+    loud, then open the fold.</strong> Grouped by topic, mirroring the glossary, so you can drill one area at
+    a time. Plain enough to paste into Anki (front = the summary line, back = the body).
+  </p>
+  <p class="animate" style="--i:3">
+    How to use: read the <code>&lt;summary&gt;</code> (the question), answer from memory, <em>then</em> expand. If you were
+    vague, that card comes back sooner. See the <a href="retention-README.html">retention method</a>.
+  </p>
+
+  <div class="topic-head">The domain (CleverTap SDKs)</div>
+  <div class="card-grid">
+    <details class="card"><summary>What is a <b>native SDK</b>?</summary><div class="card-back"><p>The "real" CleverTap library for one platform: <code>clevertap-android-sdk</code> (Kotlin/Java) and <code>clevertap-ios-sdk</code> (Objective-C/Swift). Native apps use it directly.</p></div></details>
+    <details class="card"><summary>What is a <b>wrapper SDK</b>?</summary><div class="card-back"><p>A thin library that lets cross-platform apps (JavaScript for Cordova/React Native, Dart for Flutter) call the native SDK underneath. CleverTap has <code>clevertap-cordova</code>, <code>clevertap-react-native</code>, <code>clevertap-flutter</code>.</p></div></details>
+    <details class="card"><summary>What is the <b>bridge</b>?</summary><div class="card-back"><p>The cross-language glue inside a wrapper. When JavaScript calls <code>recordEvent</code>, the bridge carries that call down to the native Android/iOS method that actually does it.</p></div></details>
+    <details class="card"><summary>What is the <b>API surface</b>?</summary><div class="card-back"><p>The set of public methods the SDK exposes for others to call (e.g. <code>recordEvent</code>, <code>onUserLogin</code>). "Surfacing an API" = exposing a new native method through the wrapper.</p></div></details>
+    <details class="card"><summary>What is a <b>module</b> in a native SDK?</summary><div class="card-back"><p>A versioned, separately-tagged piece of a native SDK. Android has <code>core</code>, <code>pushtemplates</code>, <code>hms</code>; iOS has <code>core</code>, <code>pushtemplates</code>.</p></div></details>
+    <details class="card"><summary>What is a <b>native release / version pin</b>?</summary><div class="card-back"><p>The exact native SDK version a wrapper depends on (e.g. the Cordova plugin pins <code>clevertap-android-sdk:8.2.0</code>). "Bumping the pin" = pointing the wrapper at a newer native version.</p></div></details>
+    <details class="card"><summary>What is <b>libVersion</b> and how is it computed?</summary><div class="card-back"><p>A version encoded as a plain integer in bridge code: <code>major*10000 + minor*100 + patch</code>. Example: <code>5.2.3</code> &rarr; <code>50203</code>. It tells the native SDK which wrapper version is calling it.</p></div></details>
+    <details class="card"><summary>What is <b>SemVer</b>, and what do MAJOR / MINOR / PATCH mean?</summary><div class="card-back"><p>Semantic versioning: <code>MAJOR.MINOR.PATCH</code>. MAJOR = breaking change, MINOR = new backward-compatible features, PATCH = fixes only.</p></div></details>
+  </div>
+
+  <div class="topic-head">The triage vocabulary</div>
+  <div class="card-grid">
+    <details class="card"><summary><b>Surfaced</b> — what does it mean?</summary><div class="card-back"><p>A native API change the AI <em>implemented</em> in the wrapper (added/updated the bridge).</p></div></details>
+    <details class="card"><summary><b>Skipped</b> — what does it mean?</summary><div class="card-back"><p>A change the AI deliberately did <strong>not</strong> expose (e.g. an internal-only helper).</p></div></details>
+    <details class="card"><summary><b>Deferred</b> — what does it mean?</summary><div class="card-back"><p>A change the AI couldn't safely auto-apply, so it left it for a human with a reason.</p></div></details>
+    <details class="card"><summary><b>Flagged for review</b> — and how does it differ from deferred?</summary><div class="card-back"><p>A specific deferral: the AI couldn't <em>confirm</em> something (e.g. a method named in the changelog it couldn't find in source), so it raises a flag instead of guessing. In the output JSON its <code>type</code> is <code>removal | deprecation | signature | behavior | unconfirmed</code>.</p></div></details>
+    <details class="card"><summary>What is <b>source verification</b>, and why is it non-negotiable?</summary><div class="card-back"><p>The rule that the AI must find the exact method/selector in the real native source <em>before</em> writing a call to it. Guessing a symbol that doesn't exist = a broken build. "Verify or flag — never guess."</p></div></details>
+    <details class="card"><summary>What is the <b>recall pass</b>?</summary><div class="card-back"><p>A second sweep where the AI cross-checks the native <strong>changelog</strong> against the diff tool's output, to catch the ~20% of changes the regex parser misses.</p></div></details>
+    <details class="card"><summary>Precision vs. recall — what's the difference, and who provides each?</summary><div class="card-back"><p>Precision = "of what I reported, how much is correct?" (the regex diff — only reports what it parsed). Recall = "of all that truly changed, how much did I find?" (the changelog pass boosts this to catch the regex's ~20% miss).</p></div></details>
+  </div>
+
+  <div class="topic-head">Python (the diff tool is written in it)</div>
+  <div class="card-grid">
+    <details class="card"><summary>What is <b>Python</b>, and how do you run a file?</summary><div class="card-back"><p>A programming language; files end in <code>.py</code>. Run one with <code>python3 file.py</code>. No compile step.</p></div></details>
+    <details class="card"><summary>What is the <b>standard library</b>, and why does it matter here?</summary><div class="card-back"><p>The batteries included with Python itself. The diff tool uses <strong>only</strong> the stdlib, so there's nothing to install — <strong>no <code>pip install</code> needed</strong>.</p></div></details>
+    <details class="card"><summary>What is <b>pip</b>?</summary><div class="card-back"><p>Python's package installer (an app store for libraries). Not needed for the diff tool.</p></div></details>
+    <details class="card"><summary>What is a <b>regex</b>, and what does the diff tool use it for?</summary><div class="card-back"><p>A mini-language for text patterns. The diff tool uses regex to <em>find method declarations in source</em> without fully parsing the code. Powerful but imperfect — hence ~80% coverage.</p></div></details>
+    <details class="card"><summary>What is an <b>AST</b>, and why does the tool NOT use one?</summary><div class="card-back"><p>Abstract syntax tree — the "proper" full-grammar way to parse code. The tool deliberately uses regex instead because it's simpler and good enough (the "regex-based, not AST" design note).</p></div></details>
+    <details class="card"><summary>What is a <b>dataclass</b>?</summary><div class="card-back"><p>A Python shorthand for a small data-holding object; <code>@dataclass</code> auto-writes the boilerplate. <code>Symbol</code> and <code>Surface</code> in the diff tool are dataclasses.</p></div></details>
+    <details class="card"><summary>What does <b>frozen=True</b> do on a dataclass?</summary><div class="card-back"><p>Makes it immutable (can't change after creation). Immutable objects can be dict keys and set members — which is how the tool dedupes/compares symbols.</p></div></details>
+    <details class="card"><summary>What is a Python <b>set</b>, and what do <code>-</code> and <code>&amp;</code> do?</summary><div class="card-back"><p>A collection of unique items. <code>A - B</code> = in A but not B (difference); <code>A &amp; B</code> = in both (intersection); <code>A | B</code> = in either (union). The diff is literally <code>new - old</code> (added) and <code>old - new</code> (removed).</p></div></details>
+    <details class="card"><summary>What is a <b>dict</b>, and what's a <b>tuple key</b>?</summary><div class="card-back"><p>A lookup table mapping keys to values. A tuple key like <code>("android","core")</code> lets the tool look things up by <em>platform + module together</em>.</p></div></details>
+    <details class="card"><summary>What is <b>tomllib</b> used for?</summary><div class="card-back"><p>A stdlib module (Python &ge; 3.11) that reads <code>.toml</code> files. Used to read Android's <code>gradle/libs.versions.toml</code> dependency-versions list.</p></div></details>
+    <details class="card"><summary>What is <b>pathlib / Path</b>?</summary><div class="card-back"><p>Stdlib way to build file paths with <code>/</code> like Lego (<code>Path.home() / ".cache"</code>) instead of gluing strings. Cross-OS.</p></div></details>
+    <details class="card"><summary>What is <b>subprocess</b>, and how does the tool "use git"?</summary><div class="card-back"><p>Stdlib way to run another command-line program. <code>subprocess.check_output(["git", ...])</code> literally runs <code>git</code> and captures its output — that's how the Python file uses git without reimplementing it.</p></div></details>
+    <details class="card"><summary>What is <b>urllib</b> used for here?</summary><div class="card-back"><p>Stdlib way to download from the internet — here, a <code>.tar.gz</code> of the SDK source from GitHub.</p></div></details>
+    <details class="card"><summary>What is a <b>tarball</b> (<code>.tar.gz</code>)?</summary><div class="card-back"><p>A compressed archive (like a <code>.zip</code>). GitHub serves a repo at a tag as one; the tool downloads and unpacks it (stripping the single top-level folder GitHub wraps everything in).</p></div></details>
+  </div>
+
+  <div class="topic-head">git &amp; GitHub</div>
+  <div class="card-grid">
+    <details class="card"><summary>What is <b>git</b>?</summary><div class="card-back"><p>A version-control tool: it records every change as a snapshot so you can branch, compare, and revert.</p></div></details>
+    <details class="card"><summary>What is a <b>repository</b>?</summary><div class="card-back"><p>One project's folder tracked by git (e.g. <code>clevertap-cordova</code>).</p></div></details>
+    <details class="card"><summary>What is a <b>branch</b>, and what does the sync create?</summary><div class="card-back"><p>An independent line of changes. The sync creates a fresh branch like <code>task/release_&lt;name&gt;</code> so its edits don't touch the base branch until reviewed.</p></div></details>
+    <details class="card"><summary>What is the <b>develop / base branch</b>?</summary><div class="card-back"><p>The main integration branch the sync starts <em>from</em> and opens its PR <em>against</em>.</p></div></details>
+    <details class="card"><summary>What is a <b>commit</b>?</summary><div class="card-back"><p>One saved snapshot of changes, with a message.</p></div></details>
+    <details class="card"><summary>What is a <b>pull request (PR)</b>, and why does it matter here?</summary><div class="card-back"><p>A proposal to merge one branch into another, with a diff and a place to review. The whole automation's <em>output</em> is always a PR — never a silent change.</p></div></details>
+    <details class="card"><summary>What is a <b>tag</b>, and how does the diff tool use it?</summary><div class="card-back"><p>A name pinned to a specific commit, used for releases (e.g. <code>corev8.2.0</code>). The diff tool fetches source <em>at a tag</em>.</p></div></details>
+    <details class="card"><summary>What is <b>gh</b>?</summary><div class="card-back"><p>GitHub's command-line tool. Scripts use <code>gh pr create</code>, <code>gh label create</code>, etc.</p></div></details>
+  </div>
+
+  <div class="topic-head">GitHub Actions (the automation runner)</div>
+  <div class="card-grid">
+    <details class="card"><summary>What is <b>GitHub Actions</b>?</summary><div class="card-back"><p>GitHub's built-in automation; runs your scripts on GitHub's servers when something happens (a button click, a push, a schedule).</p></div></details>
+    <details class="card"><summary>What is a <b>workflow</b>, and where does it live?</summary><div class="card-back"><p>A <code>.yml</code> file describing a sequence of automated steps, under <code>.github/workflows/</code>.</p></div></details>
+    <details class="card"><summary>What is <b>YAML</b>?</summary><div class="card-back"><p>A text format for configuration; indentation matters (like Python). Workflows are written in it.</p></div></details>
+    <details class="card"><summary>What is <b>workflow_dispatch</b>?</summary><div class="card-back"><p>A trigger meaning "run when a human clicks the button" (a manual dispatch), as opposed to running on a push.</p></div></details>
+    <details class="card"><summary>What is <b>workflow_call</b> / a reusable workflow?</summary><div class="card-back"><p>A workflow other workflows can <em>call</em>, like a shared function. <code>sync.yml</code> is one; each wrapper repo's tiny dispatch calls it.</p></div></details>
+    <details class="card"><summary>What is a <b>composite action</b>? Name a few here.</summary><div class="card-back"><p>A reusable bundle of steps (a function within Actions), under <code>.github/actions/</code>. Examples: <code>setup</code>, <code>claude-sync</code>, <code>open-pr</code>, <code>build/*</code>.</p></div></details>
+    <details class="card"><summary>What is a <b>runner</b>, and why <code>macos-14</code> here?</summary><div class="card-back"><p>The virtual machine a workflow runs on. The sync uses <code>macos-14</code> because building the iOS example requires a Mac (Xcode).</p></div></details>
+    <details class="card"><summary>What is a step's <b>outcome</b>, and what values can it take?</summary><div class="card-back"><p>The status Actions assigns automatically: <code>success</code>, <code>failure</code>, <code>cancelled</code>, or <code>skipped</code> (when its <code>if:</code> was false). Read as <code>steps.&lt;id&gt;.outcome</code>.</p></div></details>
+    <details class="card"><summary>What is an <b>if: / gating expression</b>?</summary><div class="card-back"><p>A condition on a step deciding whether it runs. The trickiest logic in <code>sync.yml</code> lives here (e.g. "open the PR only if a sync succeeded and nothing was cancelled").</p></div></details>
+    <details class="card"><summary>What do <code>always()</code>, <code>failure()</code>, and <code>!cancelled()</code> mean?</summary><div class="card-back"><p><code>always()</code> = run no matter what (even on cancel). <code>failure()</code> = run only if a prior step failed. <code>!cancelled()</code> = run on success <em>or</em> failure, but not if the run was cancelled. Without one, Actions skips remaining steps after any failure.</p></div></details>
+    <details class="card"><summary>Why use <code>!= 'failure'</code> instead of <code>== 'success'</code> in a gate?</summary><div class="card-back"><p>A <em>skipped</em> step (its <code>if:</code> was false, e.g. no iOS version) has outcome <code>skipped</code>, not <code>success</code>. <code>== 'success'</code> would wrongly block a single-platform run; <code>!= 'failure'</code> lets <em>skipped</em> through while still blocking a genuine <em>failure</em>.</p></div></details>
+    <details class="card"><summary>What is a <b>secret</b>, and how many does this system need?</summary><div class="card-back"><p>An encrypted value (API keys, tokens) stored in repo settings that workflows read but humans can't see. This system needs <strong>four</strong>: App ID, App private key, Anthropic key, Slack webhook URL.</p></div></details>
+    <details class="card"><summary>What is a <b>GitHub App</b> here, and what's its name?</summary><div class="card-back"><p>A bot identity (<code>clevertap-wrapper-sync</code>) granted permissions to mint short-lived tokens and act on a repo (push a branch, open a PR) without using a person's account.</p></div></details>
+    <details class="card"><summary>What is a <b>token</b>, and when is it minted?</summary><div class="card-back"><p>A temporary password proving the bot may act. Minted at the start of a run (in Setup); expires when the run ends.</p></div></details>
+    <details class="card"><summary>What is an <b>artifact</b>?</summary><div class="card-back"><p>A file a workflow saves for download afterward (e.g. the built APK, or Claude's output JSON/stream logs). The sync uploads these <code>if: always()</code> for debugging.</p></div></details>
+  </div>
+
+  <div class="topic-head">Claude-in-CI (the brain)</div>
+  <div class="card-grid">
+    <details class="card"><summary>What does <b>headless</b> mean, and how is Claude invoked?</summary><div class="card-back"><p>Running Claude with no human chatting — given one prompt, it runs to completion on its own. Invoked as <code>claude -p "…"</code> (print mode).</p></div></details>
+    <details class="card"><summary>What is a <b>prompt</b>, and where do the big ones live?</summary><div class="card-back"><p>The written instructions handed to Claude — effectively a <em>program</em> in English. The big ones live in <code>prompts/</code> (e.g. <code>sync-orchestrator-cordova.md</code>).</p></div></details>
+    <details class="card"><summary>What is <b>.claude/skills/</b>, and how does it differ from the prompt?</summary><div class="card-back"><p>Per-repo expert instructions Claude auto-discovers and follows — the <em>real conventions</em> for that wrapper. The prompt is the <strong>task</strong>; the skills are the <strong>know-how</strong>.</p></div></details>
+    <details class="card"><summary>What is the <b>allowlist</b> (<code>--allowed-tools</code>)?</summary><div class="card-back"><p>The exact set of tools Claude may use in a run (e.g. read/edit files, run specific commands). A security boundary — anything not listed is denied. For Cordova, <code>python3</code> is pinned to <em>only</em> the diff tool.</p></div></details>
+    <details class="card"><summary>What is <b>envsubst</b>, and why is it used on the prompt?</summary><div class="card-back"><p>A tiny command that fills <code>${PLACEHOLDER}</code> blanks in a text file with real env values. It turns one static prompt template into a run-specific prompt (injects <code>${PLATFORM}</code>, <code>${NEW_VERSION}</code>, etc.).</p></div></details>
+    <details class="card"><summary>What is <b>stream-json</b>, and how is the final result extracted?</summary><div class="card-back"><p>An output format where Claude emits one JSON event per line (JSON Lines). Scripts use <code>jq 'select(.type=="result")' | tail -1</code> to pull the final <code>result</code> envelope for cost/token totals.</p></div></details>
+    <details class="card"><summary>What is <b>jq</b>?</summary><div class="card-back"><p>A command-line tool for slicing JSON. Used to pull the <code>result</code> event out of the stream.</p></div></details>
+    <details class="card"><summary>What is the <b>soft cap</b>?</summary><div class="card-back"><p>A cost threshold (e.g. $3) that, if exceeded, posts an informational PR comment. It does <strong>not</strong> stop the run — just visibility.</p></div></details>
+    <details class="card"><summary>What is <b>self-heal</b>?</summary><div class="card-back"><p>An (optional/retired) retry loop: if a build fails, ask Claude to fix the code and try again, up to N times.</p></div></details>
+    <details class="card"><summary>Why does the claude-sync action drop <code>--bare</code>?</summary><div class="card-back"><p><code>--bare</code> would skip auto-discovery of the wrapper repo's <code>.claude/skills</code>. The orchestrator prompt relies on those skills, so running non-bare loads them — a deliberate correctness choice.</p></div></details>
+    <details class="card"><summary>Why <code>set +e</code> around the <code>claude</code> call?</summary><div class="card-back"><p>So a non-zero exit doesn't instantly abort the script. The action captures the exit code (<code>rc=$?</code>), still writes the result file, prints stderr + last 50 events, then fails deliberately with <code>exit $rc</code>. <code>set -e</code> restores strict mode after.</p></div></details>
+  </div>
+
+  <div class="topic-head">The 4-layer onion &amp; key concepts</div>
+  <div class="card-grid">
+    <details class="card"><summary>Name the four layers, one phrase each.</summary><div class="card-back"><p>&#9312; <strong>Trigger</strong> (a button in a wrapper repo) &rarr; &#9313; <strong>Conductor</strong> (<code>sync.yml</code> sequences &amp; gates) &rarr; &#9314; <strong>Brain</strong> (Claude, headless, writes the code) &rarr; &#9315; <strong>Ground truth</strong> (<code>diff_native_api.py</code>, cold facts). Click travels down; PR travels up.</p></div></details>
+    <details class="card"><summary>Which layer actually writes the JS/Kotlin/Obj-C bridge code?</summary><div class="card-back"><p><strong>Layer &#9314; — Claude.</strong> The conductor (<code>sync.yml</code>) only sequences steps; the YAML wraps no APIs. This is the idea beginners most often get backwards.</p></div></details>
+    <details class="card"><summary>Why does a non-AI Python tool (Layer &#9315;) exist if Claude is so capable?</summary><div class="card-back"><p>Because an AI can hallucinate a method that doesn't exist. The diff tool reports only what's literally in source, giving Claude a factual anchor it's told to trust and source-verify against.</p></div></details>
+    <details class="card"><summary>What are the four stages of <code>diff_native_api.py</code>?</summary><div class="card-back"><p><strong>Acquire &rarr; Extract &rarr; Diff &rarr; Render.</strong> Get the source, pull out public methods (the surface), compare old vs new, write <code>diff.json</code> + <code>diff.md</code>.</p></div></details>
+    <details class="card"><summary>What are the three tiers of <code>acquire_sources</code>, fastest-first?</summary><div class="card-back"><p>1) <strong>Local clone</strong> (if it has the git tag), 2) <strong>cache</strong> (downloaded on a past run), 3) <strong>download</strong> the <code>.tar.gz</code> from GitHub. First that works wins.</p></div></details>
+    <details class="card"><summary>In <code>_JAVA_PUBLIC_METHOD</code>, what do groups 1/2/3 capture?</summary><div class="card-back"><p>Group 1 = <strong>return type</strong>, group 2 = <strong>method name</strong>, group 3 = <strong>params</strong>. Hence <code>return_type, name, params = m.group(1), m.group(2), m.group(3)</code>.</p></div></details>
+    <details class="card"><summary>What does the negative lookahead <code>(?!class\b|interface\b|…)</code> do?</summary><div class="card-back"><p>Ensures the line is NOT a class/interface/enum/constant declaration, so <code>public class CleverTapAPI {</code> isn't mistaken for a method. Keeps the regex to <em>methods only</em>.</p></div></details>
+    <details class="card"><summary>Why does the Java extractor do a cheap <code>"public" not in line</code> check first?</summary><div class="card-back"><p>Speed. Running regex on every line is wasteful; most lines obviously can't be a public method, so a fast substring test rejects them before the expensive pattern.</p></div></details>
+    <details class="card"><summary>What does <code>_is_restricted</code> filter out, and why?</summary><div class="card-back"><p>Methods preceded by <code>@RestrictTo</code>/<code>@Hide</code>/<code>@Internal</code>/<code>@VisibleForTesting</code>. They're internal-only and should never be surfaced to wrapper users.</p></div></details>
+    <details class="card"><summary>How does <code>compute_diff</code> decide "changed"?</summary><div class="card-back"><p>For a name in both versions, it builds the <strong>set of signatures</strong> in old and in new and compares with <code>!=</code>. If the signature sets differ (param added, overload appeared, etc.), it lands in <code>changed</code>.</p></div></details>
+    <details class="card"><summary>Why is everything in <code>compute_diff</code> wrapped in <code>sorted(...)</code>?</summary><div class="card-back"><p>Sets are unordered. Sorting makes the output deterministic/reproducible — the same SDK pair always produces byte-identical <code>diff.json</code>, keeping git diffs clean.</p></div></details>
+    <details class="card"><summary>For a <code>8.1.0 &rarr; 8.3.0</code> sync, which changelog entries get read, and why?</summary><div class="card-back"><p>The <strong>target</strong> (8.3.0) <strong>plus every version strictly between</strong> (8.2.0). Syncs skip versions; reading intermediates surfaces changes that landed in a skipped release.</p></div></details>
+    <details class="card"><summary>Why convert version strings to tuples of ints before comparing?</summary><div class="card-back"><p>String comparison is wrong (<code>"8.10.0" &lt; "8.9.0"</code> alphabetically). Tuples <code>(8,10,0)</code> vs <code>(8,9,0)</code> compare numerically element-by-element, so ordering and "strictly between" work.</p></div></details>
+    <details class="card"><summary>Why does <code>_CHANGELOG_METHOD_CALL</code> require a lowercase first letter?</summary><div class="card-back"><p>To skip class names. Methods are lowerCamelCase (<code>recordEvent</code>), classes UpperCamelCase (<code>CleverTapAPI</code>). Anchoring on <code>[a-z]</code> keeps the recall set to likely <em>methods</em>.</p></div></details>
+    <details class="card"><summary>What are the THREE Android touches for a new method?</summary><div class="card-back"><p>1) <code>CleverTapFunction.java</code> — add the enum constant. 2) <code>CleverTapPlugin.java</code> — add the case in the <code>execute()</code> switch. 3) <code>CleverTapPlugin.java</code> — add the private implementation method.</p></div></details>
+    <details class="card"><summary>What are the TWO iOS touches?</summary><div class="card-back"><p>The <code>.h</code> declaration and the <code>.m</code> implementation.</p></div></details>
+    <details class="card"><summary>Why is a missed Android touch a "silent no-op," and why is that worse than a compile error?</summary><div class="card-back"><p>The app still <strong>compiles</strong> and the method exists, but it never reaches its implementation — runs and does nothing, no crash or warning. A compile error is caught instantly; a silent no-op ships unnoticed. Hence "always all three, then re-verify."</p></div></details>
+    <details class="card"><summary>What must be identical across JS, Android, and iOS for one method?</summary><div class="card-back"><p>The <strong>action string</strong> — identical across the JS <code>cordova.exec</code>, the Android enum string, and the iOS selector.</p></div></details>
+    <details class="card"><summary>Why does the pre-sync build run BEFORE Claude does anything?</summary><div class="card-back"><p>To fail fast and cheap. If the example app is already broken on <code>base_ref</code>, the run stops before spending any AI cost — no point syncing into a pipeline that can't build.</p></div></details>
+    <details class="card"><summary>Is a post-sync build failure fatal?</summary><div class="card-back"><p>No. The PR still opens with a <strong><code>build-failed</code></strong> label and a warning banner; a human pulls the branch, fixes the compile error, pushes, and merges. ("Option A.")</p></div></details>
+    <details class="card"><summary>What is the system's output, every single time?</summary><div class="card-back"><p>A <strong>pull request</strong> for a human to review and merge. The human approval is never automated away.</p></div></details>
+    <details class="card"><summary>What does <code>skip_sync=true</code> still run, and what does it skip?</summary><div class="card-back"><p>Still runs the <strong>pre-sync build</strong> (to test the pipeline); skips the AI Sync steps and post-sync build — so <strong>$0 AI cost</strong>.</p></div></details>
+    <details class="card"><summary>What is the "thin pointer" model?</summary><div class="card-back"><p>Each wrapper repo carries only a tiny dispatch workflow that <em>calls</em> the hub's <code>sync.yml</code> (plus its <code>.claude/skills</code>). All sync logic lives once in the hub — fix a bug once, every wrapper benefits.</p></div></details>
+    <details class="card"><summary>Hub vs. wrapper repos — what lives where?</summary><div class="card-back"><p><strong>Hub</strong> (<code>clevertap-wrapper-tooling</code>): <code>sync.yml</code>, composite actions, <code>diff_native_api.py</code>, <code>prompts/</code>, <code>scripts/</code>. <strong>Wrapper</strong> (<code>clevertap-cordova</code> etc.): the tiny <code>native-release-sync.yml</code> dispatch, <code>.claude/skills/</code>, and the bridge code + example apps the automation edits.</p></div></details>
+  </div>
+</main>
+
+<footer class="kit-foot">
+  <a href="retention-README.html">&#9664; How to Lock It In</a>
+  <a class="home" href="index.html">&#8962; Kit home</a>
+  <a href="retention-exercises.html">Exercises &#9654;</a>
+</footer>
+
+</body>
+</html>

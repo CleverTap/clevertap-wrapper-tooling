@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Repos &amp; Where Things Live — Wrapper-Sync Onboarding Kit</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; }
+  }
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 300;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 40px;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-nav a { color: var(--text-dim); text-decoration: none; white-space: nowrap; }
+  .kit-nav a:hover { color: var(--gold); }
+  .kit-nav .crumb {
+    flex: 1; min-width: 0; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 1.5px; font-size: 10.5px;
+    text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+  .kit-nav a.nav-next { color: var(--gold); font-weight: 600; }
+  /* ============ CONTENT LAYOUT ============ */
+  .kit-content { max-width: 860px; margin: 0 auto; padding: 44px 40px 24px; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  .kit-content h1 {
+    font-size: clamp(28px, 4vw, 44px); font-weight: 700; letter-spacing: -1px;
+    line-height: 1.08; color: var(--text-bright); margin-bottom: 18px; text-wrap: balance;
+  }
+  .kit-content h2 {
+    font-size: clamp(20px, 2.4vw, 26px); font-weight: 600; letter-spacing: -0.5px;
+    color: var(--text-bright); margin: 48px 0 8px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border); scroll-margin-top: 64px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .kit-content h2::before {
+    content: attr(data-num); font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    color: var(--gold); border: 1px solid var(--border-bright); border-radius: 5px;
+    padding: 2px 8px; flex-shrink: 0; letter-spacing: 0.5px;
+  }
+  .kit-content h2.plain::before { display: none; }
+  .kit-content h3 {
+    font-size: clamp(16px, 1.8vw, 19px); font-weight: 600; color: var(--text-bright);
+    margin: 30px 0 6px; letter-spacing: -0.3px;
+  }
+  .kit-content p { margin: 12px 0; color: var(--text); }
+  .kit-content .lead { font-size: clamp(16px, 1.1vw + 12px, 19px); line-height: 1.65; color: var(--text-dim); max-width: 70ch; }
+  .kit-content ul, .kit-content ol { margin: 12px 0 12px 26px; }
+  .kit-content li { margin: 6px 0; }
+  .kit-content li > strong { color: var(--text-bright); }
+  .kit-content strong { color: var(--text-bright); font-weight: 600; }
+  .kit-content em { color: var(--text); }
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  /* inline code */
+  .kit-content :not(pre) > code {
+    font-family: var(--font-mono); font-size: 0.85em;
+    background: var(--blue-dim); color: var(--blue);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0; padding: 15px 18px 15px 20px; border-radius: 0 9px 9px 0;
+    border: 1px solid var(--border); border-left: 3px solid var(--c, var(--blue));
+    background: var(--cbg, var(--blue-dim)); font-size: 14.5px; line-height: 1.62;
+  }
+  .callout > .callout-label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--c, var(--blue));
+    display: block; margin-bottom: 7px;
+  }
+  .callout p { margin: 6px 0; color: var(--text); }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--analogy { --c: var(--gold); --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+  .callout--note  { --c: var(--teal);  --cbg: var(--teal-dim); }
+  /* ============ CODE BLOCKS ============ */
+  .codecard { margin: 20px 0; border: 1px solid var(--border-bright); border-radius: 9px; overflow: hidden; background: var(--surface); }
+  .codecard__label {
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.5px; color: var(--text-dim); padding: 8px 14px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+  }
+  .codecard pre {
+    font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55;
+    color: var(--text); padding: 16px 16px; overflow-x: auto;
+    white-space: pre-wrap; word-break: break-word; tab-size: 2;
+  }
+  /* ============ TABLES ============ */
+  .table-wrap { margin: 20px 0; overflow-x: auto; border: 1px solid var(--border); border-radius: 9px; }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--surface2);
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim);
+    text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border-bright);
+  }
+  table.data-table tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  table.data-table tbody tr:nth-child(even) { background: var(--surface2); }
+  table.data-table tbody tr:last-child td { border-bottom: none; }
+  table.data-table td.num, table.data-table th.num { text-align: right; font-family: var(--font-mono); }
+  table.data-table code { font-family: var(--font-mono); font-size: 0.86em; background: var(--blue-dim); color: var(--blue); padding: 1px 5px; border-radius: 3px; }
+  /* ============ DETAILS (Check yourself) ============ */
+  .checkyou { margin: 16px 0; }
+  details.qa {
+    margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0; background: var(--surface); overflow: hidden;
+  }
+  details.qa > summary {
+    cursor: pointer; list-style: none; padding: 13px 18px;
+    font-weight: 600; color: var(--text-bright); font-size: 14.5px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::before {
+    content: '▸'; color: var(--gold); font-family: var(--font-mono);
+    transition: transform 0.15s ease; flex-shrink: 0;
+  }
+  details.qa[open] > summary::before { transform: rotate(90deg); }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body { padding: 4px 18px 16px 38px; color: var(--text); font-size: 14px; border-top: 1px solid var(--border); }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+  /* ============ ASCII / pre figure ============ */
+  .ascii {
+    margin: 20px 0; padding: 18px 18px; border: 1px solid var(--border-bright);
+    border-radius: 9px; background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    overflow-x: auto;
+  }
+  .ascii pre { font-family: var(--font-mono); font-size: 12px; line-height: 1.45; color: var(--text); white-space: pre; }
+  .pullquote { margin: 28px 0 8px; padding: 4px 0 4px 22px; border-left: 3px solid var(--gold); }
+  .pullquote p { font-size: clamp(17px, 1.6vw, 21px); line-height: 1.4; color: var(--text-bright); font-weight: 500; letter-spacing: -0.3px; }
+  blockquote.bq { margin: 18px 0; padding: 4px 0 4px 20px; border-left: 3px solid var(--border-bright); color: var(--text-dim); }
+  blockquote.bq p { color: var(--text-dim); }
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px; margin: 40px auto 48px; padding: 20px 40px 0;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-foot a { color: var(--text-dim); text-decoration: none; }
+  .kit-foot a:hover { color: var(--gold); }
+  .kit-foot a.foot-home { color: var(--text-dim); }
+  .kit-foot a.foot-next { color: var(--gold); font-weight: 600; }
+  .kit-foot .spacer { flex: 1; }
+  /* ============ DIAGRAM SHELL (from system-overview) ============ */
+  .diagram-shell { position: relative; margin: 22px 0; }
+  .diagram-shell__hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 8px; opacity: 0.75; display: flex; align-items: center; gap: 8px; }
+  .diagram-shell__hint::before { content: '⌖'; color: var(--gold); font-size: 13px; }
+  .mermaid-wrap {
+    position: relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    border: 1px solid var(--border-bright); border-radius: 10px; padding: 32px 24px;
+    overflow: auto; display: flex; justify-content: center; align-items: center;
+    min-height: 400px; box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05); cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+  .zoom-controls { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; z-index: 10; background: var(--surface); border: 1px solid var(--border-bright); border-radius: 6px; padding: 2px; box-shadow: 0 1px 4px rgba(13, 25, 41, 0.08); }
+  .zoom-controls button { width: 28px; height: 28px; border: none; background: transparent; color: var(--text-dim); font-family: var(--font-mono); font-size: 14px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background 0.15s ease, color 0.15s ease; }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--gold); }
+  .mermaid-viewport { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 300px; }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); padding: 0 6px; align-self: center; white-space: nowrap; }
+  .mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 16px !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; font-family: var(--font-mono) !important; font-size: 12.5px !important; }
+  .mermaid .edgeLabel rect, .mermaid .edgeLabel foreignObject { fill: var(--surface) !important; }
+  .mermaid .cluster rect { stroke-width: 1.25px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+  .mermaid .edge-pattern-solid { stroke-width: 1.5px !important; }
+  .caption { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 0 8px 8px 0; padding: 15px 20px; font-size: 13.5px; line-height: 1.65; color: var(--text-dim); margin-top: 16px; }
+  .caption strong { color: var(--text); font-weight: 600; }
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 760px) {
+    .kit-nav { padding: 10px 20px; }
+    .kit-content { padding: 28px 20px 20px; }
+    .kit-foot { padding: 20px 20px 0; }
+    .kit-nav .crumb { display: none; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+</style>
+
+</head>
+<body>
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Primer &middot; <b>Repos &amp; Where Things Live</b></span>
+  <a class="nav-next" href="glossary.html">Next: Glossary &#9654;</a>
+</nav>
+
+<main class="kit-content">
+
+<div class="eyebrow animate" style="--i:0">Primer &middot; 04</div>
+<h1 class="animate" style="--i:1">The repos, and where everything lives</h1>
+
+<div class="callout callout--info animate" style="--i:2">
+  <span class="callout-label">The flat question this page answers</span>
+  <p>You&rsquo;ve seen <em>what</em> the system does and <em>how a run flows</em>. This page answers a flatter
+  question that trips up newcomers: <strong>which files live in which repo, and why?</strong></p>
+</div>
+
+<p>There are two <em>kinds</em> of repo in this story. Getting them straight makes every other page click.</p>
+
+<h2 class="plain">The two kinds of repo</h2>
+<div class="ascii"><pre>┌──────────────────────────────────────────────────────────────────────┐
+│  THE HUB         CleverTap/clevertap-wrapper-tooling                  │
+│  (one, shared)   The brains and the machinery. Written once.          │
+│                                                                       │
+│   • .github/workflows/sync.yml        ← the reusable Conductor (②)    │
+│   • .github/actions/                   ← composite actions (setup,    │
+│                                          claude-sync, open-pr, build) │
+│   • tools/diff_native_api.py           ← the Ground-truth diff (④)    │
+│   • prompts/                           ← the prompts Claude runs (③)  │
+│   • scripts/                           ← cost / PR / Slack helpers     │
+└──────────────────────────────────────────────────────────────────────┘
+                         ▲  called by
+                         │
+┌──────────────────────────────────────────────────────────────────────┐
+│  THE WRAPPERS    CleverTap/clevertap-cordova                          │
+│  (many, thin)    CleverTap/clevertap-flutter                          │
+│                  CleverTap/clevertap-react-native                     │
+│                                                                       │
+│   • .github/workflows/native-release-sync.yml  ← the Trigger (①),     │
+│                                                   a tiny "doorbell"    │
+│   • .claude/skills/                            ← the wrapper's own     │
+│                                                   know-how             │
+│   • the actual bridge code the automation edits (JS / Dart / Kotlin / │
+│     Obj-C) + the example apps                                         │
+└──────────────────────────────────────────────────────────────────────┘</pre></div>
+
+<div class="callout callout--analogy">
+  <span class="callout-label">Analogy</span>
+  <p>The <strong>hub</strong> is a commercial kitchen &mdash; ovens, recipes, the head chef. Each
+  <strong>wrapper repo</strong> is a restaurant&rsquo;s front door with a tiny &ldquo;ring for service&rdquo;
+  bell. The bell doesn&rsquo;t cook; it calls the kitchen. The kitchen is shared by every restaurant.</p>
+</div>
+
+<h2 class="plain">The hub: <code>clevertap-wrapper-tooling</code> (written once, shared by all)</h2>
+<p>This is the repo you&rsquo;re reading the docs <em>in</em>. It holds every reusable piece, so the three
+wrappers don&rsquo;t each maintain their own copy.</p>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead><tr><th>Lives here</th><th>What it is</th><th>Onion layer</th></tr></thead>
+    <tbody>
+      <tr><td><code>.github/workflows/sync.yml</code></td><td>The <strong>reusable workflow</strong> &mdash; sequences the steps and gates them.</td><td>&#9313; Conductor</td></tr>
+      <tr><td><code>.github/actions/setup</code>, <code>claude-sync</code>, <code>open-pr</code>, <code>build/*</code></td><td><strong>Composite actions</strong> &mdash; reusable bundles of steps the conductor calls.</td><td>&#9313;</td></tr>
+      <tr><td><code>prompts/</code> (e.g. <code>sync-orchestrator-cordova.md</code>, <code>pr-description.md</code>)</td><td>The <strong>written instructions</strong> handed to Claude.</td><td>&#9314; Brain</td></tr>
+      <tr><td><code>tools/diff_native_api.py</code></td><td>The <strong>diff tool</strong> &mdash; cold facts about what changed in the native SDK.</td><td>&#9315; Ground truth</td></tr>
+      <tr><td><code>scripts/</code> (cost, PR, Slack)</td><td>Shell helpers for cost reporting, opening the PR, failure pings.</td><td>&#9313;</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout callout--info">
+  <span class="callout-label">Beginner sidebar &middot; reusable workflow &amp; composite action</span>
+  <p>A <strong>reusable workflow</strong> is a <code>.yml</code> file other workflows can <em>call</em>, like a
+  shared function. A <strong>composite action</strong> is a smaller reusable bundle of steps. Both let us write
+  the logic once in the hub and reuse it from every wrapper. See <a href="glossary.html">Glossary</a>.</p>
+</div>
+
+<h2 class="plain">The wrappers: <code>clevertap-cordova</code> (and flutter, react-native)</h2>
+<p>Each wrapper repo carries only two automation-related things plus its own code:</p>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead><tr><th>Lives here</th><th>What it is</th><th>Onion layer</th></tr></thead>
+    <tbody>
+      <tr><td><code>.github/workflows/native-release-sync.yml</code></td><td>The <strong>dispatch workflow</strong> &mdash; the button/form a maintainer clicks. It mostly just <em>calls</em> <code>sync.yml</code> in the hub and passes along versions + secrets.</td><td>&#9312; Trigger</td></tr>
+      <tr><td><code>.claude/skills/</code></td><td>The wrapper&rsquo;s <strong>expert know-how</strong> &mdash; the real conventions Claude must follow for <em>this</em> wrapper.</td><td>(feeds &#9314;)</td></tr>
+      <tr><td>bridge code + example apps</td><td>The actual files the automation reads and edits.</td><td>&mdash;</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>For Cordova specifically, the <code>.claude/skills/</code> set is:</p>
+<ul>
+  <li><strong><code>version-detection</code></strong> &mdash; every place a version number lives, and the <code>libVersion</code> integer rule.</li>
+  <li><strong><code>api-wrapper-patterns</code></strong> &mdash; how to wrap one native method across JS / Android / iOS.</li>
+  <li><strong><code>native-sdk-changelog-analysis</code></strong> &mdash; how to categorize changes and the triage decision tree.</li>
+  <li><strong><code>example-app-patterns</code></strong> &mdash; how to demo a method in <strong>all four</strong> Cordova sample apps.</li>
+  <li><strong><code>changelog-generation</code></strong> &mdash; the exact CHANGELOG format and link anchors.</li>
+  <li><strong><code>ionic-native-typings</code></strong> &mdash; exposing a method to Ionic/Angular via the typings package.</li>
+</ul>
+
+<div class="callout callout--info">
+  <span class="callout-label">Beginner sidebar &middot; prompt vs. skill</span>
+  <p>The <strong>prompt</strong> (in the hub) is the <em>task</em> &mdash; &ldquo;sync this wrapper to these
+  versions.&rdquo; The <strong>skills</strong> (in the wrapper) are the <em>know-how</em> &mdash; the
+  wrapper&rsquo;s real conventions. Claude reads the skills to learn how to do the task correctly. See
+  <a href="glossary.html">Glossary &rarr; <code>.claude/skills/</code></a>.</p>
+</div>
+
+<h2 class="plain">The &ldquo;thin pointer&rdquo; model &mdash; why split it this way?</h2>
+<p>The wrapper&rsquo;s dispatch workflow is deliberately <strong>tiny</strong>. It doesn&rsquo;t contain any sync
+logic; it just <em>points at</em> the hub and says &ldquo;run your shared workflow, here are my versions and
+secrets.&rdquo; This is the <strong>thin pointer</strong> model.</p>
+<p>Why it&rsquo;s worth it:</p>
+<ul>
+  <li><strong>Fix once, fix everywhere.</strong> A bug in the sync logic is fixed in the hub, and all wrappers get the fix. No copy-pasting across three repos.</li>
+  <li><strong>Adding a new wrapper is cheap.</strong> Drop in the small dispatch file, add the secrets, write the wrapper&rsquo;s skills, install the App &mdash; and it reuses the whole shared machine.</li>
+  <li><strong>Each wrapper pins a hub version.</strong> The dispatch&rsquo;s <code>uses:</code> line points at a hub tag (e.g. <code>@v1</code>), so an in-flight change in the hub doesn&rsquo;t surprise a wrapper mid-release.</li>
+</ul>
+<div class="callout callout--analogy">
+  <span class="callout-label">Analogy</span>
+  <p>The dispatch file is a <strong>TV remote</strong>, not the TV. It has just enough buttons to say &ldquo;do
+  the thing&rdquo;; all the actual circuitry lives in the set (the hub).</p>
+</div>
+<div class="callout callout--info">
+  <span class="callout-label">Beginner sidebar &middot; the four secrets</span>
+  <p>Each wrapper repo stores four encrypted <strong>secrets</strong> the run needs: the GitHub App&rsquo;s ID,
+  the App&rsquo;s private key, the Anthropic API key, and a Slack webhook URL. The dispatch passes them into the
+  hub workflow. You&rsquo;ll set these up in the <a href="runbook-01-prerequisites.html">runbook</a>.</p>
+</div>
+
+<hr class="rule">
+
+<h2 class="plain" id="check">&#10003; Check yourself</h2>
+<div class="checkyou">
+  <details class="qa">
+    <summary>1. The diff tool, the prompts, and <code>sync.yml</code> &mdash; which repo are they in?</summary>
+    <div class="qa-body"><p>The <strong>hub</strong> (<code>clevertap-wrapper-tooling</code>). All the reusable
+    machinery &mdash; Conductor, Brain&rsquo;s prompts, Ground-truth diff tool, composite actions, helper
+    scripts &mdash; is written once in the hub.</p></div>
+  </details>
+  <details class="qa">
+    <summary>2. What are the only automation files that live in a wrapper repo like clevertap-cordova?</summary>
+    <div class="qa-body"><p>A tiny <strong>dispatch workflow</strong> (<code>native-release-sync.yml</code>, the
+    Trigger button) and the wrapper&rsquo;s <strong><code>.claude/skills/</code></strong> (its expert know-how)
+    &mdash; plus the bridge code and example apps the automation edits. The sync <em>logic</em> lives in the
+    hub.</p></div>
+  </details>
+  <details class="qa">
+    <summary>3. Why is the dispatch workflow kept so thin?</summary>
+    <div class="qa-body"><p>So the sync logic is written once in the hub and shared by every wrapper. Fix a bug
+    in the hub and all wrappers benefit; adding a new wrapper just means dropping in the small pointer file.
+    That&rsquo;s the &ldquo;thin pointer&rdquo; model.</p></div>
+  </details>
+</div>
+
+</main>
+
+<footer class="kit-foot">
+  <a class="foot-prev" href="primer-03-a-day-in-the-life.html">&#9664; A Day in the Life</a>
+  <span class="spacer"></span>
+  <a class="foot-home" href="index.html">&#8962; Kit home</a>
+  <span class="spacer"></span>
+  <a class="foot-next" href="glossary.html">Glossary &#9654;</a>
+</footer>
+
+
+</body>
+</html>

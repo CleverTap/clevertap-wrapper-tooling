@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exercises</title>
+<!--
+  Aesthetic: BLUEPRINT — technical-drawing feel, faint grid background,
+  deep slate/blue field with a gold accent, monospace labels, precise borders.
+  Font pairing: IBM Plex Sans + IBM Plex Mono. Light-first, dark variant via prefers-color-scheme.
+  Style block shared verbatim with system-overview.html, plus content-component styles.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px clamp(20px, 5vw, 56px);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-nav a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    color: var(--text-dim);
+    margin: 0 auto 0 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10.5px;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+
+  /* ============ CONTENT ============ */
+  .kit-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px clamp(20px, 5vw, 56px) 20px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.07;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(19px, 2.2vw, 24px);
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    color: var(--text-bright);
+    margin: 48px 0 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 64px;
+  }
+  h2 .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 28px 0 6px;
+  }
+
+  p { margin: 12px 0; color: var(--text); }
+  .kit-content > p, .callout p, li { color: var(--text); }
+  .lead {
+    font-size: clamp(15.5px, 1vw + 12px, 18px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--text); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ============ CODE BLOCK CARD ============ */
+  .code-card {
+    margin: 18px 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+  }
+  .code-card__label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 14px;
+  }
+  .code-card pre {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+  .code-card pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 9px 9px 0;
+    background: var(--cbg, var(--blue-dim));
+    padding: 14px 18px;
+  }
+  .callout__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .callout__label::before {
+    content: ''; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--c, var(--blue));
+  }
+  .callout p { font-size: 14px; margin: 6px 0; }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--note  { --c: var(--gold);  --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ============ DATA TABLE ============ */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface2);
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  tbody tr:nth-child(even) { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ============ DETAILS (Check yourself / FAQ) ============ */
+  details.qa {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.qa[open] { border-color: var(--border-bright); }
+  details.qa > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 44px 13px 16px;
+    position: relative;
+    font-weight: 600;
+    color: var(--text-bright);
+    font-size: 14.5px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::after {
+    content: '+';
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 18px; line-height: 1;
+    color: var(--gold);
+    transition: transform 0.2s;
+  }
+  details.qa[open] > summary::after { content: '\2212'; }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+  }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+
+  .check-head {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin: 40px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .check-head::before { content: ''; width: 22px; height: 1px; background: var(--green); }
+
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px;
+    margin: 40px auto 0;
+    padding: 20px clamp(20px, 5vw, 56px) 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-foot a { text-decoration: none; color: var(--accent); }
+  .kit-foot a:hover { color: var(--text-bright); }
+  .kit-foot a.home { color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .kit-nav .crumb { display: none; }
+  }
+
+  /* ============ EXERCISE-SPECIFIC ============ */
+  .ex { margin: 36px 0; padding-top: 8px; }
+  .ex h2 { margin-top: 24px; }
+  .ex .task { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--blue); border-radius: 0 9px 9px 0; padding: 14px 18px; margin: 14px 0; }
+  .ex .task .task-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--blue); display: block; margin-bottom: 6px; }
+  details.fold { margin: 10px 0; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); overflow: hidden; }
+  details.fold[open] { border-color: var(--border-bright); }
+  details.fold > summary { cursor: pointer; list-style: none; padding: 11px 40px 11px 16px; position: relative; font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::after { content: '+'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-size: 16px; color: var(--gold); }
+  details.fold[open] > summary::after { content: '\2212'; }
+  details.fold.hint > summary { color: var(--amber); }
+  details.fold.sol > summary { color: var(--green); }
+  details.fold > summary:hover { background: var(--surface2); }
+  details.fold .fold-body { padding: 4px 16px 16px; border-top: 1px solid var(--border); font-size: 14px; }
+  details.fold .fold-body p:first-child, details.fold .fold-body ol:first-child { margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Retention · <b>Exercises</b></span>
+  <a href="retention-capstone.html">Next: Capstone &#9654;</a>
+</nav>
+
+<main class="kit-content">
+  <div class="eyebrow animate">Retention · Exercises</div>
+  <h1 class="animate" style="--i:1">Exercises — do it, don't read it</h1>
+  <p class="lead animate" style="--i:2">
+    Reading explanations is recognition. <em>Doing</em> is recall. Each drill below has a <strong>task</strong>, a folded
+    <strong>hint</strong>, and a folded <strong>solution</strong>. Attempt the task first — open the real files, run the real
+    commands — then check the hint, then grade yourself against the solution.
+  </p>
+  <p class="animate" style="--i:3">
+    These cover the whole system: tracing a run through the <a href="primer-02-the-4-layer-onion.html">4 layers</a>,
+    reading <a href="walk-sync-yml.html"><code>sync.yml</code> gates</a>, the <a href="walk-orchestrator-prompt-cordova.html">3-touch rule</a>,
+    <a href="walk-diff-03-surface-extraction-java-kotlin.html">regex decoding</a>,
+    <a href="walk-diff-02-source-acquisition.html">source acquisition</a>, and
+    <a href="trouble-01-failure-modes.html">failure modes</a>.
+  </p>
+
+  <div class="ex">
+    <h2>Exercise 1 — Trace one run from click to PR, naming each layer</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>A maintainer syncs Android core <code>8.1.0 &rarr; 8.2.0</code> (iOS not in this release). Narrate the run
+         from the click to the merged PR, and at each phase name <strong>which of the four layers</strong> is acting.</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>The four layers are &#9312; Trigger, &#9313; Conductor, &#9314; Brain, &#9315; Ground truth. A click travels <em>down</em> the
+         layers; a PR travels back <em>up</em>. Walk the conductor's step order: setup &rarr; pre-sync build &rarr; sync &rarr;
+         post-sync build &rarr; commit/push/PR. See <a href="primer-03-a-day-in-the-life.html">a day in the life</a>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <ol>
+        <li><strong>Click</strong> — maintainer fills the form (<code>android_version=8.2.0</code>, <code>ios_module=none</code>) and runs it.
+            &rarr; <strong>Layer &#9312; Trigger</strong> (<code>native-release-sync.yml</code> in the wrapper repo).</li>
+        <li>The trigger <strong>calls</strong> the hub's <code>sync.yml</code>. &rarr; <strong>Layer &#9313; Conductor.</strong></li>
+        <li><strong>Setup:</strong> mint a bot token, check out the wrapper, make a fresh branch, install the Claude CLI.
+            &rarr; Layer &#9313;.</li>
+        <li><strong>Pre-sync build</strong> of the example app, <em>before</em> any AI cost. Green here, so continue. &rarr; Layer &#9313;
+            (it calls the <code>build/cordova</code> action).</li>
+        <li><strong>Sync Android:</strong> the conductor hands Claude a rendered prompt &rarr; <strong>Layer &#9314; Brain.</strong> Claude runs
+            <code>diff_native_api.py</code> (<strong>Layer &#9315; Ground truth</strong>), reads <code>diff.json</code>, does the recall pass over the
+            changelog, triages each change (surface/skip/defer/flag), <strong>source-verifies</strong>, writes the bridge
+            (JS + Android 3-touch + iOS 2-touch), bumps versions, updates the changelog + all 4 sample apps,
+            emits structured JSON. (iOS sync is skipped — no iOS version.)</li>
+        <li><strong>Post-sync build</strong> — rebuild with Claude's edits. &rarr; Layer &#9313;.</li>
+        <li><strong>Commit &rarr; push &rarr; open PR</strong> with labels (<code>auto-generated</code>, <code>new-api</code> if methods surfaced) + cost
+            comment; Slack only on failure. &rarr; Layer &#9313;. The PR is the output traveling back <em>up</em>.</li>
+        <li><strong>Human reviews and merges.</strong> Layer &#9313; produced it; the human is never removed.</li>
+      </ol>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 2 — Predict what an <code>if:</code> gate evaluates to</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>The real <strong>Open combined PR</strong> gate from <a href="walk-sync-yml.html"><code>sync.yml</code></a> is:</p>
+    </div>
+    <div class="code-card">
+      <div class="code-card__label">Gate expression</div>
+      <pre><code>!cancelled()
+&amp;&amp; env.no_changes != 'true'
+&amp;&amp; steps.sync_android.outcome != 'failure'
+&amp;&amp; steps.sync_ios.outcome != 'failure'
+&amp;&amp; (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')</code></pre>
+    </div>
+    <p>For each scenario, decide <strong>true (PR opens)</strong> or <strong>false (PR skipped)</strong> and why:</p>
+    <ul>
+      <li><strong>(a)</strong> Android-only run: <code>sync_android=success</code>, <code>sync_ios=skipped</code>, <code>no_changes</code> unset, not cancelled.</li>
+      <li><strong>(b)</strong> Both ran: <code>sync_android=success</code>, <code>sync_ios=failure</code>, not cancelled.</li>
+      <li><strong>(c)</strong> Both skipped: <code>sync_android=skipped</code>, <code>sync_ios=skipped</code>, not cancelled.</li>
+    </ul>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>It's one big AND — every line must be true. Remember a <em>skipped</em> step's outcome is <code>skipped</code>, not
+         <code>failure</code> and not <code>success</code>. <code>env.no_changes</code> unset is not the string <code>'true'</code>. The final clause
+         needs <strong>at least one</strong> <code>== 'success'</code>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <ul>
+        <li><strong>(a) TRUE — PR opens.</strong> <code>!cancelled()</code>&#10003;; <code>no_changes != 'true'</code>&#10003; (unset &ne; 'true'); android <code>!=
+          'failure'</code>&#10003;; ios <code>skipped != 'failure'</code>&#10003;; last clause: android <code>== 'success'</code>&#10003; (OR is satisfied).
+          This is exactly why the gate uses <code>!= 'failure'</code> — so a skipped iOS doesn't block an Android-only run.</li>
+        <li><strong>(b) FALSE — PR skipped.</strong> The clause <code>steps.sync_ios.outcome != 'failure'</code> is <strong>false</strong> (ios <em>did</em>
+          fail), so the whole AND is false. A failed sync means Claude errored mid-edit — don't ship a
+          half-done PR.</li>
+        <li><strong>(c) FALSE — PR skipped.</strong> Lines 1–4 pass (skipped &ne; failure), but the <strong>last clause fails</strong>:
+          neither android nor ios is <code>'success'</code>. Both skipped = no real work, so no PR.</li>
+      </ul>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 3 — Name all 3 Android touches + 2 iOS touches for a new JS method</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>A new method <code>getUserEventLog(...)</code> was added in <code>www/CleverTap.js</code>. List every native edit
+         required to make it actually work — Android (3) and iOS (2) — and name the one thing that must be
+         identical across all sides.</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>On Android, a missed touch is a <em>silent no-op</em>, not a compile error. Two of the three Android touches
+         are in the same file. See the
+         <a href="walk-orchestrator-prompt-cordova.html">3-touch rule</a>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <p><strong>Android — 3 touches:</strong></p>
+      <ol>
+        <li><code>src/android/CleverTapFunction.java</code> — add the <strong>enum constant</strong>.</li>
+        <li><code>src/android/CleverTapPlugin.java</code> — add the <strong>case in the <code>execute()</code> switch</strong>.</li>
+        <li><code>src/android/CleverTapPlugin.java</code> — add the <strong>private implementation method</strong>.</li>
+      </ol>
+      <p><strong>iOS — 2 touches:</strong></p>
+      <ol>
+        <li>The <strong><code>.h</code> declaration</strong>.</li>
+        <li>The <strong><code>.m</code> implementation</strong>.</li>
+      </ol>
+      <p><strong>Must be identical across all sides:</strong> the <strong>action string</strong> — used by the JS <code>cordova.exec</code>, the
+         Android enum string, and the iOS selector. If they don't match, the call never reaches the native
+         method.</p>
+      <p>(And per the kit's house rule, the method also needs a runnable demo in <strong>all four</strong> sample apps.)</p>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 4 — Decode a piece of <code>_JAVA_PUBLIC_METHOD</code></h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>Given the regex:</p>
+    </div>
+    <div class="code-card">
+      <div class="code-card__label">Python regex</div>
+      <pre><code>_JAVA_PUBLIC_METHOD = re.compile(
+    r"^\s*public\s+"
+    r"(?!class\b|interface\b|enum\b|@interface\b|static\s+final\b)"
+    r"([\w\&lt;\&gt;\[\],\s\?\.]+?)\s+"
+    r"(\w+)\s*"
+    r"\(([^)]*)\)"
+)</code></pre>
+    </div>
+    <p>Answer: (a) what do groups 1, 2, 3 capture? (b) what does the <code>(?!...)</code> piece do and why is it
+       needed? (c) why does the params group <code>[^)]*</code> contribute to the ~80% coverage limit?</p>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>See the <a href="walk-diff-03-surface-extraction-java-kotlin.html">regex anatomy</a>.
+         <code>(?!...)</code> is a <em>negative lookahead</em>. <code>[^)]</code> means "any char except <code>)</code>".</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <p><strong>(a)</strong> Group 1 = <strong>return type</strong> (allows <code>&lt;&gt;</code>, <code>[]</code>, <code>,</code>, <code>?</code>, <code>.</code> so <code>List&lt;String&gt;</code> works), group 2
+         = <strong>method name</strong> (<code>\w+</code>), group 3 = <strong>parameters</strong> (everything between the parens).</p>
+      <p><strong>(b)</strong> It's a <strong>negative lookahead</strong>: the line must NOT continue with <code>class</code>/<code>interface</code>/<code>enum</code>/
+         <code>@interface</code>/<code>static final</code>. Without it, <code>public class CleverTapAPI {</code> would be misread as a method.
+         It keeps matches to <em>methods only</em> (and excludes <code>static final</code> constants).</p>
+      <p><strong>(c)</strong> <code>[^)]*</code> is "any chars except <code>)</code>", so it <strong>cannot handle a <code>)</code> inside the parameters</strong> (e.g.
+         a method reference). Combined with the line-oriented matching, things like Kotlin default args,
+         <code>@JvmOverloads</code>-generated overloads, and unusual wrapping slip past — that's the deliberate ~20%
+         miss, caught later by the changelog recall pass.</p>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 5 — Spot the bug: a public method is missing from the diff</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>The native changelog clearly says <code>8.2.0</code> added <code>setLocaleLanguage(...)</code>, but the diff
+         tool's <code>added</code> bucket doesn't list it. List the likely causes (with rough probabilities), and name
+         the mechanism designed to catch this.</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>Where does the diff tool <em>find</em> methods, and what does it <em>deliberately filter out</em>? And what is the
+         "recall pass" for? See
+         <a href="walk-diff-03-surface-extraction-java-kotlin.html">extraction</a> and
+         <a href="walk-diff-08-changelog-crossvalidation.html">changelog cross-validation</a>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <p><strong>Likely causes:</strong></p>
+      <ul>
+        <li><strong>~80%: a regex extraction miss.</strong> The declaration wrapped across lines, was generated via
+          <code>@JvmOverloads</code>, used Kotlin default params, or was formatted in a way the line-oriented regex
+          didn't match — so it never entered either surface, and <code>compute_diff</code> can only sort what was
+          extracted. <code>compute_diff</code> is <strong>not</strong> buggy.</li>
+        <li><strong>~the rest: a restriction annotation.</strong> If the method carried <code>@RestrictTo</code>/<code>@Hide</code>/<code>@Internal</code>/
+          <code>@VisibleForTesting</code>, <code>_is_restricted</code> filtered it out on purpose (it shouldn't be surfaced).</li>
+      </ul>
+      <p><strong>What catches it:</strong> the <strong>changelog recall pass</strong>. It extracts method names from the changelog prose
+         and computes <code>changelog_only_methods = changelog_mentioned &minus; (new_surface &cup; old_surface)</code>, printing a
+         <code>&#9888;&#65039;</code> for any name the changelog mentions but neither surface contains — making the parser miss
+         visible so a human (or Claude) source-verifies it.</p>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 6 — Walk the 3-tier source acquisition for a GitHub-only version</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>The diff tool needs Android core source at <code>8.2.0</code>. There is <strong>no local clone</strong> and <strong>no
+         cache</strong> for it. Trace what <code>acquire_sources</code> does, step by step, naming the tag it builds and the
+         final fallback.</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>The three tiers, fastest-first: local clone &rarr; cache &rarr; download. <code>REPOS[(platform, module)]</code> gives the
+         repo + tag format. Android core tags look like <code>corev{ver}</code>. See
+         <a href="walk-diff-02-source-acquisition.html">source acquisition</a>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <ol>
+        <li>Look up <code>REPOS[("android","core")]</code> &rarr; repo <code>CleverTap/clevertap-android-sdk</code>, tag format
+           <code>corev{ver}</code>.</li>
+        <li>Build the tag: <code>tag_fmt.format(ver="8.2.0")</code> &rarr; <strong><code>corev8.2.0</code></strong>. Short repo slug =
+           <code>clevertap-android-sdk</code>.</li>
+        <li><strong>Tier 1 (local clone):</strong> no <code>local_path</code> (or it lacks tag <code>corev8.2.0</code>) &rarr; fall through.</li>
+        <li><strong>Tier 2 (cache):</strong> <code>cache_dir / "clevertap-android-sdk-corev8.2.0"</code> doesn't exist &rarr; fall through.</li>
+        <li><strong>Tier 3 (download):</strong> <code>_download_and_extract</code> fetches
+           <code>https://github.com/CleverTap/clevertap-android-sdk/archive/refs/tags/corev8.2.0.tar.gz</code>, unpacks
+           it into a staging area, <strong>strips the single top-level folder</strong> GitHub wraps it in, and returns the
+           destination as the source root. (If the tag didn't exist, it exits with a clear message pointing
+           to the repo's tags page.)</li>
+      </ol>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 7 — Decide the SemVer bump for a removed public method</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>The diff for a sync shows a public method in the <code>removed</code> bucket (it existed in the old
+         version, gone in the new). What <strong>SemVer bump</strong> should the wrapper take, and why?</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>SemVer: MAJOR = breaking, MINOR = new backward-compatible features, PATCH = fixes only. A <em>removed</em>
+         public method is something host apps may already be calling. See <a href="glossary.html">Glossary &rarr; SemVer</a>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <p><strong>A MAJOR bump.</strong> Removing a public method is a <strong>breaking change</strong> — any host app calling it will
+         break when it upgrades. SemVer reserves MAJOR for exactly this. (Contrast: a new backward-compatible
+         method = MINOR; a fix-only release = PATCH.) The removal would also appear in <code>flagged_for_review</code>
+         with <code>type: "removal"</code> so a human consciously confirms the break, and the PR would carry a
+         <code>breaking-change</code> label.</p>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 8 — Map a symptom to cause and fix (build-failed label)</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>A run finished and a PR exists, but it carries a <strong><code>build-failed</code></strong> label and a warning
+         banner; the run is red and Slack pinged. What happened, and what do you do?</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>Which build runs <em>after</em> Claude's edits? Is this fatal? See
+         <a href="trouble-01-failure-modes.html">failure modes §2</a>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <p><strong>Cause:</strong> the <strong>post-sync build failed</strong> — Claude's edits didn't compile. By design ("Option A"),
+         the PR opens anyway rather than discarding the work; the <code>Flag post-sync build failure</code> step
+         (<code>always()</code>) turns the run red and pings Slack. A classic underlying cause is a referenced native
+         method/selector that doesn't actually exist.</p>
+      <p><strong>Fix (non-fatal, sometimes expected):</strong> a human (1) pulls the branch locally, (2) fixes the compile
+         error, (3) pushes — the PR updates, (4) then reviews and merges as normal. Nothing was lost.</p>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 9 — Run a dry-run (skip_sync) sync mentally</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>You want to confirm the build pipeline works after a toolchain bump, <strong>without paying for
+         any AI</strong>. Which flag do you set, what runs, what's skipped, and what does it cost?</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>See <a href="runbook-05-dry-run-and-skip-sync.html">dry-run and skip-sync</a>. Which build still runs?</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <p>Set <strong><code>skip_sync = true</code></strong> in the trigger form (pick a real version pair so the build is meaningful).
+         The run <strong>still executes the pre-sync build</strong> (so you can iterate on the build pipeline) but
+         <strong>skips</strong> the AI Sync steps and the post-sync build &rarr; <strong>$0 of AI cost</strong>, a few minutes of CI. Perfect
+         for build-pipeline problems (missing config, dependency drift) that have nothing to do with the AI.</p>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 10 — Why is the diff tool separate from Claude?</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>In 3–4 sentences, explain why the system has a deterministic Python diff tool (Layer &#9315;) at
+         all, instead of just letting Claude read the SDK source and decide everything. Name the specific risk
+         the tool guards against and the rule Claude follows because of it.</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>Think about what an LLM can do that a regex parser cannot — and vice versa. "Librarian vs. editor."
+         See <a href="primer-02-the-4-layer-onion.html">the 4-layer onion</a>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <p>An AI can <strong>hallucinate</strong> — confidently name a method or selector that doesn't exist, which for a
+         <em>compiled</em> bridge means a broken build. The diff tool is deterministic: it reports only what is
+         literally in the source, so it gives Claude a factual anchor it cannot make up. Claude is therefore
+         told to <strong>trust the diff as ground truth</strong> and to <strong>source-verify</strong> any symbol before writing a call
+         to it — and to <strong>flag</strong> anything it can't confirm rather than guess. The tool is the librarian (only
+         tells you what's truly on the shelf); Claude is the editor (decides what to publish) — kept honest by
+         the leash.</p>
+    </div></details>
+  </div>
+
+  <div class="ex">
+    <h2>Exercise 11 — Trace <code>claude-sync</code> capturing a Claude failure</h2>
+    <div class="task">
+      <span class="task-label">Task</span>
+      <p>Inside the <a href="walk-claude-sync-action.html"><code>claude-sync</code> action</a>, the
+         <code>claude -p</code> call exits non-zero. Walk what the shell does next, and what that ultimately does to the
+         PR.</p>
+    </div>
+    <details class="fold hint"><summary>Hint</summary><div class="fold-body">
+      <p>Follow <code>set +e</code> &rarr; <code>rc=$?</code> &rarr; the <code>jq</code> extraction &rarr; the <code>if [ $rc -ne 0 ]</code> branch &rarr; <code>exit $rc</code>. Then
+         recall how the conductor's gates read this step's <strong>outcome</strong>.</p>
+    </div></details>
+    <details class="fold sol"><summary>Solution</summary><div class="fold-body">
+      <ol>
+        <li><code>set +e</code> was on, so the non-zero exit doesn't abort the script.</li>
+        <li><code>rc=$?</code> captures Claude's exit code; <code>set -e</code> restores strict mode.</li>
+        <li><code>jq 'select(.type=="result")' | tail -1</code> still tries to write the result file (<code>|| true</code> so an
+           empty stream doesn't fail the step).</li>
+        <li><code>if [ $rc -ne 0 ]</code> is true &rarr; it prints <code>::error::</code>, dumps stderr and the last 50 stream events
+           into log groups, then <strong><code>exit $rc</code></strong> — deliberately failing the step.</li>
+        <li>That makes the step's <strong>outcome</strong> <code>failure</code>. The conductor's commit/push/open-PR gates check
+           <code>steps.sync_*.outcome != 'failure'</code>, so they <strong>skip</strong> — <strong>no PR is opened from a broken sync.</strong></li>
+      </ol>
+    </div></details>
+  </div>
+
+</main>
+
+<footer class="kit-foot">
+  <a href="retention-flashcards.html">&#9664; Flashcards</a>
+  <a class="home" href="index.html">&#8962; Kit home</a>
+  <a href="retention-capstone.html">Capstone &#9654;</a>
+</footer>
+
+</body>
+</html>

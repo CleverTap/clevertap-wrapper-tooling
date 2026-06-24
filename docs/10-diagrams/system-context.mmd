@@ -1,0 +1,41 @@
+%% system-context: native SDK release -> wrapper PR, who triggers what and which services mint tokens / serve the model.
+%% Hand-edited source of truth; render via visual-explainer; never hand-edit generated HTML.
+flowchart LR
+    subgraph NATIVE["Native SDK repos"]
+        AND["clevertap-android-sdk<br/>(tagged release)"]
+        IOS["clevertap-ios-sdk<br/>(tagged release)"]
+    end
+
+    M["Maintainer"]
+
+    subgraph WRAP["Wrapper repo (e.g. clevertap-cordova)"]
+        DISP["native-release-sync.yml<br/>(thin dispatch)"]
+        PR["Pull Request<br/>back to base_ref"]
+    end
+
+    subgraph HUB["clevertap-wrapper-tooling (hub)"]
+        WF["sync.yml<br/>(reusable conductor)"]
+        DIFF["diff_native_api.py<br/>(deterministic diff)"]
+        SYNC["claude-sync action<br/>(claude -p headless)"]
+    end
+
+    subgraph EXT["External services"]
+        APP["GitHub App<br/>(mints short-lived token)"]
+        API["Anthropic API<br/>(serves the model)"]
+    end
+
+    AND -->|"maintainer reads release notes"| M
+    IOS -->|"maintainer reads release notes"| M
+    M -->|"Run workflow + pick versions"| DISP
+    DISP -->|"uses: sync.yml@v1 (versions + secrets)"| WF
+
+    WF -->|"app_id + private key"| APP
+    APP -->|"installation token"| WF
+
+    WF --> SYNC
+    SYNC -->|"runs mid-task"| DIFF
+    SYNC -->|"prompt + tools"| API
+    API -->|"edits + structured result"| SYNC
+
+    WF -->|"commit, push, open PR (bot token)"| PR
+    PR -->|"review + merge"| M

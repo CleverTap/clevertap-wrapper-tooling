@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Troubleshooting — FAQ</title>
+<!--
+  Aesthetic: BLUEPRINT — technical-drawing feel, faint grid background,
+  deep slate/blue field with a gold accent, monospace labels, precise borders.
+  Font pairing: IBM Plex Sans + IBM Plex Mono. Light-first, dark variant via prefers-color-scheme.
+  Style block shared verbatim with system-overview.html, plus content-component styles.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px clamp(20px, 5vw, 56px);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-nav a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    color: var(--text-dim);
+    margin: 0 auto 0 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10.5px;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+
+  /* ============ CONTENT ============ */
+  .kit-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px clamp(20px, 5vw, 56px) 20px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.07;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(19px, 2.2vw, 24px);
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    color: var(--text-bright);
+    margin: 48px 0 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 64px;
+  }
+  h2 .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 28px 0 6px;
+  }
+
+  p { margin: 12px 0; color: var(--text); }
+  .kit-content > p, .callout p, li { color: var(--text); }
+  .lead {
+    font-size: clamp(15.5px, 1vw + 12px, 18px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--text); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ============ CODE BLOCK CARD ============ */
+  .code-card {
+    margin: 18px 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+  }
+  .code-card__label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 14px;
+  }
+  .code-card pre {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+  .code-card pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 9px 9px 0;
+    background: var(--cbg, var(--blue-dim));
+    padding: 14px 18px;
+  }
+  .callout__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .callout__label::before {
+    content: ''; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--c, var(--blue));
+  }
+  .callout p { font-size: 14px; margin: 6px 0; }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--note  { --c: var(--gold);  --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ============ DATA TABLE ============ */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface2);
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  tbody tr:nth-child(even) { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ============ DETAILS (Check yourself / FAQ) ============ */
+  details.qa {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.qa[open] { border-color: var(--border-bright); }
+  details.qa > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 44px 13px 16px;
+    position: relative;
+    font-weight: 600;
+    color: var(--text-bright);
+    font-size: 14.5px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::after {
+    content: '+';
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 18px; line-height: 1;
+    color: var(--gold);
+    transition: transform 0.2s;
+  }
+  details.qa[open] > summary::after { content: '\2212'; }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+  }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+
+  .check-head {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin: 40px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .check-head::before { content: ''; width: 22px; height: 1px; background: var(--green); }
+
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px;
+    margin: 40px auto 0;
+    padding: 20px clamp(20px, 5vw, 56px) 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-foot a { text-decoration: none; color: var(--accent); }
+  .kit-foot a:hover { color: var(--text-bright); }
+  .kit-foot a.home { color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Troubleshooting · <b>FAQ</b></span>
+  <a href="retention-README.html">Next: Retention &#9654;</a>
+</nav>
+
+<main class="kit-content">
+  <div class="eyebrow animate">Troubleshooting · 05</div>
+  <h1 class="animate" style="--i:1">FAQ</h1>
+  <p class="lead animate" style="--i:2">
+    The most common questions and gotchas, pulled together. If you skimmed everything else, this page
+    is the cheat sheet. Each answer links to the fuller explanation.
+  </p>
+
+  <details class="qa">
+    <summary>1. Does the YAML workflow actually write the wrapper code?</summary>
+    <div class="qa-body">
+      <p>No. The workflow (Layer ②, the Conductor) only <strong>sequences and gates</strong> steps. The actual
+         code-writing is done by <strong>Claude</strong> (Layer ③, the Brain), which the conductor hands a written prompt
+         to. This is the single idea beginners get backwards. See
+         <a href="primer-02-the-4-layer-onion.html">the 4-layer onion</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>2. I asked to sync but nothing changed. Broken?</summary>
+    <div class="qa-body">
+      <p>Almost certainly not. You probably synced to the version <strong>already pinned</strong> — Claude correctly
+         no-ops. Pick a target version that differs from the current pin. See
+         <a href="trouble-01-failure-modes.html">failure modes §3</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>3. The PR opened with a <code>build-failed</code> label. Is that an emergency?</summary>
+    <div class="qa-body">
+      <p>No — it's by design ("Option A"). Claude's edits didn't compile, so the PR opens anyway. A human
+         pulls the branch, fixes the build, pushes, and merges. See
+         <a href="runbook-04-review-the-pr.html">review the PR</a> and <a href="trouble-01-failure-modes.html">failure modes §2</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>4. The run died at setup with <code>Invalid keyData</code>. What now?</summary>
+    <div class="qa-body">
+      <p>The GitHub App <strong>private key's newlines were mangled</strong> when pasted into the secret. Re-paste the
+         exact <code>.pem</code> bytes (e.g. <code>cat key.pem | pbcopy</code>) and verify the key. See
+         <a href="runbook-01-prerequisites.html">prerequisites</a> and <a href="trouble-01-failure-modes.html">failure modes §4</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>5. How do I test without spending AI money or touching protected branches?</summary>
+    <div class="qa-body">
+      <p>Use <strong><code>skip_sync=true</code></strong> (builds only, $0 AI), a <strong><code>base_ref</code> baseline branch</strong>, or full <strong>fork
+         testing</strong> per the hub's <code>TESTING.md</code>. See <a href="runbook-05-dry-run-and-skip-sync.html">dry-run and skip-sync</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>6. The native SDK added a method but the PR didn't surface it. Why?</summary>
+    <div class="qa-body">
+      <p>Could be three things: it was deliberately <strong>skipped</strong> (internal), it's in <strong><code>flagged_for_review</code></strong>
+         (named in the changelog but unconfirmable), or the regex diff missed it and the recall pass didn't
+         recover it. Check those PR sections first. See
+         <a href="trouble-02-when-claude-misses-an-api.html">when Claude misses an API</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>7. Why does the diff tool only catch ~80% of changes?</summary>
+    <div class="qa-body">
+      <p>It uses <strong>regex</strong> (pattern-matching), not a full parser — a deliberate simplicity trade-off. The
+         remaining ~20% are caught by the <strong>changelog recall pass</strong>. See
+         <a href="trouble-02-when-claude-misses-an-api.html">when Claude misses an API</a> and <a href="glossary.html">Glossary → Regex</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>8. Claude "couldn't verify" a method and over-flagged everything. Why?</summary>
+    <div class="qa-body">
+      <p>Most likely it tried to inspect the <strong>cached native source with Bash</strong>, which is denied outside the
+         working directory. The fix is to use the <strong>Read/Grep/Glob tools</strong> (not path-restricted) for
+         native-source checks. See <a href="trouble-03-source-verification-failures.html">source verification failures</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>9. The cost number Claude printed doesn't match the cost report. Which is right?</summary>
+    <div class="qa-body">
+      <p>The <strong>cost report</strong> — it reads the authoritative <strong>CLI envelope</strong> (<code>total_cost_usd</code>, <code>usage.*</code>).
+         Numbers Claude writes in its own prose can drift and aren't trustworthy. See
+         <a href="trouble-04-cost-and-caps.html">cost and caps</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>10. A run cost more than the $3 cap. Did it stop the PR?</summary>
+    <div class="qa-body">
+      <p>No. The cap is <strong>soft</strong> — it posts an informational comment but never aborts a run (so it can't leave
+         a half-finished PR). See <a href="trouble-04-cost-and-caps.html">cost and caps</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>11. I updated a skill but the run still behaved the old way. Why?</summary>
+    <div class="qa-body">
+      <p>Skills must be <strong>committed to the <code>base_ref</code> branch</strong> the run syncs from — Claude discovers
+         <code>.claude/skills/</code> from the checked-out branch. Commit your skill changes before the run picks them
+         up. See <a href="trouble-03-source-verification-failures.html">source verification failures</a>.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>12. My retry bails immediately saying the branch exists. How do I get unstuck?</summary>
+    <div class="qa-body">
+      <p>A previous failed run left a <code>task/release_&lt;name&gt;</code> branch. Re-run with a <strong>unique <code>release_name</code></strong> to
+         avoid the collision. See <a href="runbook-02-trigger-a-sync.html">trigger a sync</a> and
+         <a href="trouble-01-failure-modes.html">failure modes §4</a>.</p>
+    </div>
+  </details>
+
+  <div class="check-head">Check yourself</div>
+
+  <details class="qa">
+    <summary>1. Name the two "this looks broken but it's by design" behaviors.</summary>
+    <div class="qa-body">
+      <p>(1) Syncing to the <strong>already-pinned version</strong> → Claude no-ops (Q2). (2) A <strong><code>build-failed</code></strong> PR still
+         opening, for a human to fix (Q3). Both are intended, not bugs.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>2. What's the one-line fix for the two most common setup/retry failures?</summary>
+    <div class="qa-body">
+      <p><code>Invalid keyData</code> → <strong>re-paste the private key with intact newlines</strong> (Q4). Branch-exists on retry →
+         <strong>use a unique <code>release_name</code></strong> (Q12).</p>
+    </div>
+  </details>
+
+  <p>
+    <strong>Next:</strong> back to the <a href="primer-01-what-is-wrapper-sync.html">primer</a>, or jump to the
+    <a href="runbook-01-prerequisites.html">runbook</a> to run your own sync.
+  </p>
+</main>
+
+<footer class="kit-foot">
+  <a href="trouble-04-cost-and-caps.html">&#9664; Cost &amp; Caps</a>
+  <a class="home" href="index.html">&#8962; Kit home</a>
+  <a href="retention-README.html">Retention — How to Lock It In &#9654;</a>
+</footer>
+
+</body>
+</html>

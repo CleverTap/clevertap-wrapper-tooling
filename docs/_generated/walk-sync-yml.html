@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sync.yml — the Conductor — CleverTap Wrapper-Sync Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    /* accents: deep blue + gold, with semantic supporting tones */
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .grid > *, .flex > * { min-width: 0; }
+
+  body {
+    background-color: var(--bg);
+    /* blueprint grid: fine lines + heavier major lines */
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ LAYOUT (TOC + main) ============ */
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 44px;
+  }
+  .main { min-width: 0; }
+
+  /* ---- TOC ---- */
+  .toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    grid-row: 1 / -1;
+    padding: 16px 0;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+  }
+  .toc::-webkit-scrollbar { width: 3px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .toc-mark {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 0 0 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc a {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.35;
+    margin-bottom: 1px;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface2); }
+  .toc a.active { color: var(--text-bright); border-left-color: var(--gold); background: var(--surface2); }
+
+  /* ============ HERO ============ */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 22px;
+    height: 1px;
+    background: var(--gold);
+  }
+  h1 {
+    font-size: clamp(30px, 4.4vw, 50px);
+    font-weight: 700;
+    letter-spacing: -1.2px;
+    line-height: 1.04;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: clamp(16px, 1.1vw + 12px, 19px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 70ch;
+    margin-bottom: 12px;
+  }
+  .lead strong { color: var(--text); font-weight: 600; }
+  .lead code, .caption code, .terms code, .ve-card code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .chip::before {
+    content: '';
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c, var(--gold));
+  }
+
+  /* ============ SECTION HEADS ============ */
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 56px 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 24px;
+  }
+  .sec-head__num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    border: 1px solid var(--border-bright);
+    border-radius: 5px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .sec-head__title {
+    font-size: clamp(20px, 2.4vw, 27px);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-bright);
+  }
+  .sec-intro {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    max-width: 74ch;
+    margin: 14px 0 22px;
+  }
+
+  /* ============ MERMAID CONTAINER (from template) ============ */
+  .diagram-shell { position: relative; }
+  .diagram-shell__hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    opacity: 0.75;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .diagram-shell__hint::before {
+    content: '⌖';
+    color: var(--gold);
+    font-size: 13px;
+  }
+
+  .mermaid-wrap {
+    position: relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 32px 24px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+    cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+
+  .zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+    z-index: 10;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 2px;
+    box-shadow: 0 1px 4px rgba(13, 25, 41, 0.08);
+  }
+  .zoom-controls button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--gold); }
+
+  .mermaid-viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+  }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 0 6px;
+    align-self: center;
+    white-space: nowrap;
+  }
+
+  /* ============ MERMAID SVG OVERRIDES ============ */
+  .mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 16px !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; font-family: var(--font-mono) !important; font-size: 12.5px !important; }
+  .mermaid .edgeLabel rect, .mermaid .edgeLabel foreignObject { fill: var(--surface) !important; }
+  .mermaid .cluster rect { stroke-width: 1.25px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+  .mermaid .edge-pattern-solid { stroke-width: 1.5px !important; }
+  /* sequence diagram */
+  .mermaid .actor { stroke-width: 1.5px !important; }
+  .mermaid text.actor, .mermaid .actor > tspan { font-family: var(--font-body) !important; }
+  .mermaid .messageText { font-family: var(--font-mono) !important; font-size: 12px !important; fill: var(--text) !important; }
+  .mermaid .loopText, .mermaid .loopText tspan { font-family: var(--font-mono) !important; fill: var(--text-dim) !important; }
+  .mermaid .noteText { font-family: var(--font-body) !important; }
+
+  /* ============ CAPTION ============ */
+  .caption {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+  .caption strong { color: var(--text); font-weight: 600; }
+
+  /* ============ ONION LEGEND ============ */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border-bright); }
+
+  /* ============ KEY TERMS ============ */
+  .terms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .term {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 15px 17px;
+    position: relative;
+  }
+  .term--hero {
+    background: color-mix(in srgb, var(--surface) 90%, var(--gold) 10%);
+    border-color: color-mix(in srgb, var(--border) 40%, var(--gold) 60%);
+    box-shadow: 0 3px 14px rgba(13, 25, 41, 0.07);
+    grid-column: 1 / -1;
+  }
+  .term__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .term__label::before {
+    content: '';
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+  }
+  .term p { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+  .term p strong { color: var(--text); font-weight: 600; }
+
+  .pullquote {
+    margin: 28px 0 8px;
+    padding: 4px 0 4px 22px;
+    border-left: 3px solid var(--gold);
+  }
+  .pullquote p {
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.4;
+    color: var(--text-bright);
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1000px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 0 20px 28px; }
+    .toc {
+      position: sticky; top: 0; z-index: 200;
+      grid-row: auto; max-height: none;
+      display: flex; gap: 4px; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      margin: 0 -20px 4px;
+    }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc-title, .toc-mark { display: none; }
+    .toc a {
+      white-space: nowrap; flex-shrink: 0;
+      border-left: none; border-bottom: 2px solid transparent;
+      border-radius: 4px 4px 0 0; padding: 6px 10px; font-size: 10.5px;
+    }
+    .toc a.active { border-left: none; border-bottom-color: var(--gold); }
+    .main { padding-top: 22px; }
+    .sec-head { scroll-margin-top: 54px; }
+  }
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+</style>
+
+<style>
+  /* ====== KIT PAGE CHROME (content pages) ====== */
+  .kit-nav, .kit-foot {
+    max-width: 1000px; margin: 0 auto; display: flex;
+    align-items: center; justify-content: space-between; gap: 16px;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-nav {
+    padding: 18px 40px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .kit-nav a, .kit-foot a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover, .kit-foot a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    flex: 1; text-align: center; color: var(--text-dim);
+    letter-spacing: 1.5px; text-transform: uppercase; font-size: 10.5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kit-foot {
+    margin-top: 64px; padding: 24px 40px 48px; border-top: 1px solid var(--border);
+  }
+  .kit-content {
+    max-width: 1000px; margin: 0 auto; padding: 36px 40px 0;
+  }
+  .kit-content > * { animation: fadeUp 0.45s ease-out both; }
+
+  .page-eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  }
+  .page-eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  .kit-content h1 { margin-bottom: 20px; }
+
+  .kit-content h2 {
+    font-size: clamp(19px, 2.2vw, 25px); font-weight: 600; letter-spacing: -0.5px;
+    color: var(--text-bright); margin: 48px 0 8px; padding-bottom: 11px;
+    border-bottom: 1px solid var(--border); scroll-margin-top: 80px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .kit-content h2 .h2-mark {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--gold);
+    border: 1px solid var(--border-bright); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;
+  }
+  .kit-content h3 {
+    font-size: 16.5px; font-weight: 600; color: var(--text-bright); margin: 28px 0 6px;
+  }
+  .kit-content p { font-size: 15px; line-height: 1.7; color: var(--text); margin: 12px 0; }
+  .kit-content p.muted { color: var(--text-dim); }
+  .kit-content ul, .kit-content ol { margin: 12px 0 12px 22px; }
+  .kit-content li { font-size: 15px; line-height: 1.7; color: var(--text); margin: 5px 0; }
+  .kit-content strong { color: var(--text-bright); font-weight: 600; }
+  .kit-content em { font-style: italic; }
+  .kit-content a { color: var(--accent); }
+  .kit-content code {
+    font-family: var(--font-mono); font-size: 0.84em; background: var(--blue-dim);
+    color: var(--blue); padding: 1px 5px; border-radius: 3px;
+  }
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+
+  /* ====== CODE CARD ====== */
+  .code-card {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: 9px; margin: 18px 0; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(13,25,41,0.05);
+  }
+  .code-card__head {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  }
+  .code-card__head .lang {
+    color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .code-card__head .file { color: var(--text); }
+  .code-card pre {
+    margin: 0; padding: 16px 18px; overflow-x: auto;
+    font-family: var(--font-mono); font-size: 12.8px; line-height: 1.65;
+    color: var(--text); white-space: pre-wrap; word-break: break-word;
+  }
+  .code-card pre .marker { color: var(--gold); font-weight: 600; }
+
+  /* ====== CALLOUTS ====== */
+  .callout {
+    border: 1px solid var(--border); border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 18px 0;
+    background: var(--cbg, var(--surface));
+  }
+  .callout__label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--c, var(--blue));
+    margin-bottom: 7px; display: flex; align-items: center; gap: 7px;
+  }
+  .callout__label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .callout p { margin: 6px 0; font-size: 14px; line-height: 1.65; color: var(--text); }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--amber { --c: var(--amber); --cbg: var(--amber-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ====== DATA TABLE ====== */
+  .data-table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.data-table th, table.data-table td {
+    text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.6;
+  }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--surface2); color: var(--text-bright);
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; font-weight: 600; z-index: 1;
+  }
+  table.data-table tbody tr:nth-child(odd) { background: var(--surface); }
+  table.data-table tbody tr:nth-child(even) { background: var(--surface2); }
+  table.data-table tbody tr:hover { background: var(--blue-dim); }
+  table.data-table td.num { text-align: right; font-family: var(--font-mono); color: var(--gold); }
+  table.data-table code { background: var(--blue-dim); }
+
+  /* ====== DETAILS (Check yourself) ====== */
+  .check-block { margin: 20px 0; }
+  .check-block .check-head {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin: 26px 0 12px;
+  }
+  .check-block .check-head::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  details.qcard {
+    border: 1px solid var(--border); border-radius: 9px; margin: 10px 0;
+    background: var(--surface); overflow: hidden;
+  }
+  details.qcard[open] { border-color: var(--border-bright); }
+  details.qcard summary {
+    cursor: pointer; list-style: none; padding: 13px 16px; font-size: 14.5px;
+    font-weight: 500; color: var(--text-bright); display: flex; gap: 10px; align-items: flex-start;
+  }
+  details.qcard summary::-webkit-details-marker { display: none; }
+  details.qcard summary::before {
+    content: 'Q'; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--gold); border: 1px solid var(--border-bright); border-radius: 4px;
+    padding: 1px 6px; flex-shrink: 0; margin-top: 1px;
+  }
+  details.qcard[open] summary { border-bottom: 1px solid var(--border); background: var(--surface2); }
+  details.qcard .answer { padding: 14px 16px 16px; font-size: 14px; line-height: 1.7; color: var(--text); }
+  details.qcard .answer p { margin: 0 0 8px; }
+  details.qcard .answer p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 700px) {
+    .kit-nav, .kit-foot, .kit-content { padding-left: 20px; padding-right: 20px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+
+</head>
+<body>
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">WALKTHROUGHS · THE CONDUCTOR (sync.yml)</span>
+  <a href="walk-claude-sync-action.html">Next: The Brain (claude-sync) &#9654;</a>
+</nav>
+
+<main class="kit-content">
+<div class="page-eyebrow">walkthroughs · the conductor</div>
+<h1><code>sync.yml</code> — the Conductor</h1>
+<div class="callout callout--info">
+  <div class="callout__label">In one sentence</div>
+  <p>This is the reusable workflow that wires every step together — checkout, setup, build, run Claude per platform, then <em>decide</em> (with tricky <code>if:</code> expressions) whether to commit, push, and open the PR.</p>
+  <p><strong>File:</strong> <code>.github/workflows/sync.yml</code>. This is <strong>Layer &#9313; (the Conductor)</strong> of the <a href="index.html">4-layer onion</a>.</p>
+</div>
+<p>The conductor itself is &ldquo;thin&rdquo;: all the real work lives in <strong>composite actions</strong> it calls. Its job is <strong>orchestration</strong> — the order of steps, and the conditions under which each one runs. The hardest part to read is the cluster of <code>if:</code> conditions that gate the commit / push / open-PR steps, so those get the line-by-line treatment. Everything else gets annotated highlights.</p>
+<h2><span class="h2-mark">◎</span>The shape (read this first)</h2>
+<section class="diagram-shell">
+  <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom &middot; drag to pan &middot; double-click to fit &middot; &#9215; opens full size</p>
+  <div class="mermaid-wrap">
+    <div class="zoom-controls">
+      <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+      <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+      <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+      <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+      <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+      <span class="zoom-label">Loading&hellip;</span>
+    </div>
+    <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"><style>foreignObject div { overflow: visible !important; }</style><svg id="mermaid-1781628186394" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 711.23828125px;" viewBox="0 0 711.23828125 1552.875" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#mermaid-1781628186394{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#mermaid-1781628186394 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#mermaid-1781628186394 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#mermaid-1781628186394 .error-icon{fill:#552222;}#mermaid-1781628186394 .error-text{fill:#552222;stroke:#552222;}#mermaid-1781628186394 .edge-thickness-normal{stroke-width:1px;}#mermaid-1781628186394 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1781628186394 .edge-pattern-solid{stroke-dasharray:0;}#mermaid-1781628186394 .edge-thickness-invisible{stroke-width:0;fill:none;}#mermaid-1781628186394 .edge-pattern-dashed{stroke-dasharray:3;}#mermaid-1781628186394 .edge-pattern-dotted{stroke-dasharray:2;}#mermaid-1781628186394 .marker{fill:#333333;stroke:#333333;}#mermaid-1781628186394 .marker.cross{stroke:#333333;}#mermaid-1781628186394 svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mermaid-1781628186394 p{margin:0;}#mermaid-1781628186394 .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1781628186394 .cluster-label text{fill:#333;}#mermaid-1781628186394 .cluster-label span{color:#333;}#mermaid-1781628186394 .cluster-label span p{background-color:transparent;}#mermaid-1781628186394 .label text,#mermaid-1781628186394 span{fill:#333;color:#333;}#mermaid-1781628186394 .node rect,#mermaid-1781628186394 .node circle,#mermaid-1781628186394 .node ellipse,#mermaid-1781628186394 .node polygon,#mermaid-1781628186394 .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#mermaid-1781628186394 .rough-node .label text,#mermaid-1781628186394 .node .label text,#mermaid-1781628186394 .image-shape .label,#mermaid-1781628186394 .icon-shape .label{text-anchor:middle;}#mermaid-1781628186394 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#mermaid-1781628186394 .rough-node .label,#mermaid-1781628186394 .node .label,#mermaid-1781628186394 .image-shape .label,#mermaid-1781628186394 .icon-shape .label{text-align:center;}#mermaid-1781628186394 .node.clickable{cursor:pointer;}#mermaid-1781628186394 .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#mermaid-1781628186394 .arrowheadPath{fill:#333333;}#mermaid-1781628186394 .edgePath .path{stroke:#333333;stroke-width:2.0px;}#mermaid-1781628186394 .flowchart-link{stroke:#333333;fill:none;}#mermaid-1781628186394 .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628186394 .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#mermaid-1781628186394 .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628186394 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-1781628186394 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid-1781628186394 .cluster text{fill:#333;}#mermaid-1781628186394 .cluster span{color:#333;}#mermaid-1781628186394 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#mermaid-1781628186394 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#mermaid-1781628186394 rect.text{fill:none;stroke-width:0;}#mermaid-1781628186394 .icon-shape,#mermaid-1781628186394 .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628186394 .icon-shape p,#mermaid-1781628186394 .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#mermaid-1781628186394 .icon-shape .label rect,#mermaid-1781628186394 .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628186394 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#mermaid-1781628186394 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#mermaid-1781628186394 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="mermaid-1781628186394_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628186394_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628186394_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628186394_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628186394_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628186394_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><g class="root"><g class="clusters"></g><g class="edgePaths"><path d="M306.453,62L306.453,66.167C306.453,70.333,306.453,78.667,306.453,86.333C306.453,94,306.453,101,306.453,104.5L306.453,108" id="L_CO_SET_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CO_SET_0" data-points="W3sieCI6MzA2LjQ1MzEyNSwieSI6NjJ9LHsieCI6MzA2LjQ1MzEyNSwieSI6ODd9LHsieCI6MzA2LjQ1MzEyNSwieSI6MTEyfV0=" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M306.453,190L306.453,194.167C306.453,198.333,306.453,206.667,306.453,214.333C306.453,222,306.453,229,306.453,232.5L306.453,236" id="L_SET_CC_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SET_CC_0" data-points="W3sieCI6MzA2LjQ1MzEyNSwieSI6MTkwfSx7IngiOjMwNi40NTMxMjUsInkiOjIxNX0seyJ4IjozMDYuNDUzMTI1LCJ5IjoyNDB9XQ==" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M306.453,318L306.453,322.167C306.453,326.333,306.453,334.667,306.453,342.333C306.453,350,306.453,357,306.453,360.5L306.453,364" id="L_CC_PRE_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_CC_PRE_0" data-points="W3sieCI6MzA2LjQ1MzEyNSwieSI6MzE4fSx7IngiOjMwNi40NTMxMjUsInkiOjM0M30seyJ4IjozMDYuNDUzMTI1LCJ5IjozNjh9XQ==" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M306.453,470L306.453,474.167C306.453,478.333,306.453,486.667,306.453,494.333C306.453,502,306.453,509,306.453,512.5L306.453,516" id="L_PRE_GATE_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_PRE_GATE_0" data-points="W3sieCI6MzA2LjQ1MzEyNSwieSI6NDcwfSx7IngiOjMwNi40NTMxMjUsInkiOjQ5NX0seyJ4IjozMDYuNDUzMTI1LCJ5Ijo1MjB9XQ==" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M267.546,644.499L256.044,657.15C244.542,669.801,221.539,695.104,210.037,713.255C198.535,731.406,198.535,742.406,198.535,747.906L198.535,753.406" id="L_GATE_ABORT_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_GATE_ABORT_0" data-points="W3sieCI6MjY3LjU0NTczNDkzOTIzOTksInkiOjY0NC40OTg4NTk5MzkyMzk5fSx7IngiOjE5OC41MzUxNTYyNSwieSI6NzIwLjQwNjI1fSx7IngiOjE5OC41MzUxNTYyNSwieSI6NzU3LjQwNjI1fV0=" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M345.361,644.499L356.862,657.15C368.364,669.801,391.368,695.104,402.869,713.255C414.371,731.406,414.371,742.406,414.371,747.906L414.371,753.406" id="L_GATE_SA_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_GATE_SA_0" data-points="W3sieCI6MzQ1LjM2MDUxNTA2MDc2MDEsInkiOjY0NC40OTg4NTk5MzkyMzk5fSx7IngiOjQxNC4zNzEwOTM3NSwieSI6NzIwLjQwNjI1fSx7IngiOjQxNC4zNzEwOTM3NSwieSI6NzU3LjQwNjI1fV0=" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M414.371,835.406L414.371,839.573C414.371,843.74,414.371,852.073,414.371,859.74C414.371,867.406,414.371,874.406,414.371,877.906L414.371,881.406" id="L_SA_SI_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SA_SI_0" data-points="W3sieCI6NDE0LjM3MTA5Mzc1LCJ5Ijo4MzUuNDA2MjV9LHsieCI6NDE0LjM3MTA5Mzc1LCJ5Ijo4NjAuNDA2MjV9LHsieCI6NDE0LjM3MTA5Mzc1LCJ5Ijo4ODUuNDA2MjV9XQ==" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M414.371,963.406L414.371,967.573C414.371,971.74,414.371,980.073,414.371,987.74C414.371,995.406,414.371,1002.406,414.371,1005.906L414.371,1009.406" id="L_SI_POST_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_SI_POST_0" data-points="W3sieCI6NDE0LjM3MTA5Mzc1LCJ5Ijo5NjMuNDA2MjV9LHsieCI6NDE0LjM3MTA5Mzc1LCJ5Ijo5ODguNDA2MjV9LHsieCI6NDE0LjM3MTA5Mzc1LCJ5IjoxMDEzLjQwNjI1fV0=" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M318.121,1091.181L307.685,1095.385C297.249,1099.589,276.376,1107.998,265.94,1115.702C255.504,1123.406,255.504,1130.406,255.504,1133.906L255.504,1137.406" id="L_POST_DECIDE_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_POST_DECIDE_0" data-points="W3sieCI6MzE4LjEyMTA5Mzc1LCJ5IjoxMDkxLjE4MDc3NjY3ODE0MTJ9LHsieCI6MjU1LjUwMzkwNjI1LCJ5IjoxMTE2LjQwNjI1fSx7IngiOjI1NS41MDM5MDYyNSwieSI6MTE0MS40MDYyNX1d" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M199.884,1361.255L189.428,1376.692C178.972,1392.128,158.06,1423.002,147.604,1443.938C137.148,1464.875,137.148,1475.875,137.148,1481.375L137.148,1486.875" id="L_DECIDE_PR_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_DECIDE_PR_0" data-points="W3sieCI6MTk5Ljg4NDA0NDc1MTA4NjIsInkiOjEzNjEuMjU1MTM4NTAxMDg2M30seyJ4IjoxMzcuMTQ4NDM3NSwieSI6MTQ1My44NzV9LHsieCI6MTM3LjE0ODQzNzUsInkiOjE0OTAuODc1fV0=" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M311.124,1361.255L321.58,1376.692C332.036,1392.128,352.948,1423.002,363.403,1443.938C373.859,1464.875,373.859,1475.875,373.859,1481.375L373.859,1486.875" id="L_DECIDE_STOP_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_DECIDE_STOP_0" data-points="W3sieCI6MzExLjEyMzc2Nzc0ODkxMzgsInkiOjEzNjEuMjU1MTM4NTAxMDg2M30seyJ4IjozNzMuODU5Mzc1LCJ5IjoxNDUzLjg3NX0seyJ4IjozNzMuODU5Mzc1LCJ5IjoxNDkwLjg3NX1d" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path><path d="M510.621,1091.181L521.057,1095.385C531.493,1099.589,552.366,1107.998,562.802,1130.158C573.238,1152.318,573.238,1188.229,573.238,1206.185L573.238,1224.141" id="L_POST_COST_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_POST_COST_0" data-points="W3sieCI6NTEwLjYyMTA5Mzc1LCJ5IjoxMDkxLjE4MDc3NjY3ODE0MTJ9LHsieCI6NTczLjIzODI4MTI1LCJ5IjoxMTE2LjQwNjI1fSx7IngiOjU3My4yMzgyODEyNSwieSI6MTIyOC4xNDA2MjV9XQ==" marker-end="url(#mermaid-1781628186394_flowchart-v2-pointEnd)"></path></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_CO_SET_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_SET_CC_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_CC_PRE_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_PRE_GATE_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(198.53515625, 720.40625)"><g class="label" data-id="L_GATE_ABORT_0" transform="translate(-12.453125, -12)"><foreignObject width="24.90625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>yes</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(414.37109375, 720.40625)"><g class="label" data-id="L_GATE_SA_0" transform="translate(-8.8984375, -12)"><foreignObject width="17.796875" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>no</p></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_SA_SI_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_SI_POST_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_POST_DECIDE_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(137.1484375, 1453.875)"><g class="label" data-id="L_DECIDE_PR_0" transform="translate(-12.453125, -12)"><foreignObject width="24.90625" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>yes</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(373.859375, 1453.875)"><g class="label" data-id="L_DECIDE_STOP_0" transform="translate(-8.8984375, -12)"><foreignObject width="17.796875" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>no</p></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_POST_COST_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default  " id="flowchart-CO-0" transform="translate(306.453125, 35)"><rect class="basic label-container" style="" x="-106.0546875" y="-27" width="212.109375" height="54"></rect><g class="label" style="" transform="translate(-76.0546875, -12)"><rect></rect><foreignObject width="152.109375" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>checkout tooling repo</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-SET-1" transform="translate(306.453125, 151)"><rect class="basic label-container" style="" x="-128.2734375" y="-39" width="256.546875" height="78"></rect><g class="label" style="" transform="translate(-98.2734375, -24)"><rect></rect><foreignObject width="196.546875" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>Setup<br>(token, branch, Claude CLI)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-CC-3" transform="translate(306.453125, 279)"><rect class="basic label-container" style="" x="-112.4765625" y="-39" width="224.953125" height="78"></rect><g class="label" style="" transform="translate(-82.4765625, -24)"><rect></rect><foreignObject width="164.953125" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>Resolve Claude config<br>(prompt + tool allowlist)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-PRE-5" transform="translate(306.453125, 419)"><rect class="basic label-container" style="" x="-130" y="-51" width="260" height="102"></rect><g class="label" style="" transform="translate(-100, -36)"><rect></rect><foreignObject width="200" height="92"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>Build PRE-sync<br>(does it build BEFORE Claude?)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-GATE-7" transform="translate(306.453125, 601.703125)"><polygon points="81.703125,0 163.40625,-81.703125 81.703125,-163.40625 0,-81.703125" class="label-container" transform="translate(-81.203125, 81.703125)"></polygon><g class="label" style="" transform="translate(-42.703125, -24)"><rect></rect><foreignObject width="85.40625" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>pre-sync<br>build failed?</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-ABORT-9" transform="translate(198.53515625, 796.40625)"><rect class="basic label-container" style="" x="-88.6953125" y="-39" width="177.390625" height="78"></rect><g class="label" style="" transform="translate(-58.6953125, -24)"><rect></rect><foreignObject width="117.390625" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>exit 1<br>(no Claude cost)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-SA-11" transform="translate(414.37109375, 796.40625)"><rect class="basic label-container" style="" x="-77.140625" y="-39" width="154.28125" height="78"></rect><g class="label" style="" transform="translate(-47.140625, -24)"><rect></rect><foreignObject width="94.28125" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>Sync Android<br>(claude -p)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-SI-13" transform="translate(414.37109375, 924.40625)"><rect class="basic label-container" style="" x="-68.2421875" y="-39" width="136.484375" height="78"></rect><g class="label" style="" transform="translate(-38.2421875, -24)"><rect></rect><foreignObject width="76.484375" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>Sync iOS<br>(claude -p)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-POST-15" transform="translate(414.37109375, 1052.40625)"><rect class="basic label-container" style="" x="-96.25" y="-39" width="192.5" height="78"></rect><g class="label" style="" transform="translate(-66.25, -24)"><rect></rect><foreignObject width="132.5" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>Build POST-sync<br>(does it still build?)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-DECIDE-17" transform="translate(255.50390625, 1279.140625)"><polygon points="137.734375,0 275.46875,-137.734375 137.734375,-275.46875 0,-137.734375" class="label-container" transform="translate(-137.234375, 137.734375)"></polygon><g class="label" style="" transform="translate(-86.734375, -36)"><rect></rect><foreignObject width="173.46875" height="92"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>!cancelled() AND<br>no sync failed AND<br>at least one succeeded?</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-PR-19" transform="translate(137.1484375, 1517.875)"><rect class="basic label-container" style="" x="-129.1484375" y="-27" width="258.296875" height="54"></rect><g class="label" style="" transform="translate(-99.1484375, -12)"><rect></rect><foreignObject width="198.296875" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>commit → push → open PR</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-STOP-21" transform="translate(373.859375, 1517.875)"><rect class="basic label-container" style="" x="-57.5625" y="-27" width="115.125" height="54"></rect><g class="label" style="" transform="translate(-27.5625, -12)"><rect></rect><foreignObject width="55.125" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>skip PR</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-COST-23" transform="translate(573.23828125, 1279.140625)"><rect class="basic label-container" style="" x="-130" y="-51" width="260" height="102"></rect><g class="label" style="" transform="translate(-100, -36)"><rect></rect><foreignObject width="200" height="92"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>cost report + Slack on failure<br>+ upload artifacts (always)</p></span></div></foreignObject></g></g></g></g></g></svg></div></div>
+  </div>
+  <script type="text/plain" class="diagram-source">
+flowchart TD
+    CO["checkout tooling repo"] --> SET["Setup<br/>(token, branch, Claude CLI)"]
+    SET --> CC["Resolve Claude config<br/>(prompt + tool allowlist)"]
+    CC --> PRE["Build PRE-sync<br/>(does it build BEFORE Claude?)"]
+    PRE --> GATE{"pre-sync<br/>build failed?"}
+    GATE -- "yes" --> ABORT["exit 1<br/>(no Claude cost)"]
+    GATE -- "no" --> SA["Sync Android<br/>(claude -p)"]
+    SA --> SI["Sync iOS<br/>(claude -p)"]
+    SI --> POST["Build POST-sync<br/>(does it still build?)"]
+    POST --> DECIDE{"!cancelled() AND<br/>no sync failed AND<br/>at least one succeeded?"}
+    DECIDE -- "yes" --> PR["commit &rarr; push &rarr; open PR"]
+    DECIDE -- "no" --> STOP["skip PR"]
+    POST --> COST["cost report + Slack on failure<br/>+ upload artifacts (always)"]
+  </script>
+</section>
+<div class="callout callout--amber">
+  <div class="callout__label">Analogy</div>
+  <p>The conductor is the person at the front of the orchestra. They don't play an instrument; they decide <em>when</em> each section plays and <em>whether</em> the concert goes ahead. The <code>if:</code> expressions are the conductor's &ldquo;play / don't play&rdquo; hand signals.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">01</span>The inputs and secrets (annotated highlights)</h2>
+<p>The workflow opens by declaring what it accepts. This is the <code>on: workflow_call:</code> block — it means &ldquo;another workflow may <em>call</em> me and pass these values in.&rdquo;</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">.github/workflows/sync.yml</span></div>
+  <pre>on:
+  workflow_call:                       # <span class="marker">①</span> I am a REUSABLE workflow — callable by others
+    inputs:
+      wrapper:
+        description: 'Wrapper name (react-native, flutter, ...). Selects the build action, prompt, and tool allowlist.'
+        required: true                 # <span class="marker">②</span> must be supplied — there is no default
+        type: string
+      android_version:
+        description: 'New Android version (e.g. 8.2.0). Empty skips Android.'
+        required: false
+        type: string
+        default: ''                    # <span class="marker">③</span> empty string = "skip this platform"
+      ...
+      skip_sync:
+        description: 'Skip Claude Sync + post-sync builds. ...'
+        type: boolean
+        default: false
+    secrets:
+      app_id:
+        required: true                 # <span class="marker">④</span> secrets are passed separately from inputs
+      anthropic_api_key:
+        required: true
+      ...</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this declares</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>workflow_call</code></td><td>&ldquo;I'm not triggered by a push or a button. Another workflow calls me like a function.&rdquo; (See the <a href="walk-wrapper-dispatch.html">wrapper-dispatch</a> page for the caller.)</td></tr>
+<tr><td>②</td><td><code>required: true</code></td><td>&ldquo;The caller MUST give me a <code>wrapper</code> value. There's no fallback.&rdquo;</td></tr>
+<tr><td>③</td><td><code>default: ''</code></td><td>&ldquo;If the caller leaves a version empty, that platform is skipped — empty means <em>skip</em>.&rdquo;</td></tr>
+<tr><td>④</td><td><code>secrets:</code> block</td><td>&ldquo;Passwords/keys come through a separate, redacted channel — never printed in logs.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is a reusable workflow?</div>
+  <p>A normal GitHub Actions workflow is triggered by an event (a push, a schedule, a button). A <strong>reusable workflow</strong> (<code>on: workflow_call</code>) is triggered by <em>another workflow calling it</em> — like a function you call with arguments. One copy of the logic lives here; every wrapper repo (cordova, react-native, flutter) calls the <em>same</em> file. Fix a bug once, every repo benefits. See the <a href="glossary.html">Glossary</a>.</p>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: inputs vs secrets</div>
+  <p><strong>Inputs</strong> are ordinary values (version numbers, names) and are fine to print in logs. <strong>Secrets</strong> (API keys, App private keys) go in a separate <code>secrets:</code> block; GitHub automatically masks them in logs so they never leak. Same idea, two doors — one public, one locked.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">02</span>The job structure (annotated highlights)</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">.github/workflows/sync.yml</span></div>
+  <pre>jobs:
+  sync:
+    runs-on: macos-14                  # <span class="marker">①</span> a fresh macOS machine (needed for iOS/Xcode builds)
+    timeout-minutes: 90                # <span class="marker">②</span> hard stop after 90 min so a hung run can't bill forever
+    steps:
+      - name: Checkout tooling repo (this repo)
+        uses: actions/checkout@v4      # <span class="marker">③</span> grab THIS repo first — its composite actions are needed
+        with:
+          repository: CleverTap/clevertap-wrapper-tooling
+          path: tooling                # <span class="marker">④</span> put it in a folder named `tooling/`
+      - name: Setup
+        id: setup
+        uses: ./tooling/.github/actions/setup   # <span class="marker">⑤</span> run a COMPOSITE action (a bundle of steps)
+        with:
+          ...</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this does</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>runs-on: macos-14</code></td><td>&ldquo;Rent a Mac to run on — required because the Cordova/RN/Flutter iOS builds need Xcode.&rdquo;</td></tr>
+<tr><td>②</td><td><code>timeout-minutes: 90</code></td><td>&ldquo;If the whole job runs past 90 minutes, kill it. Safety valve against a stuck run.&rdquo;</td></tr>
+<tr><td>③</td><td><code>actions/checkout@v4</code></td><td>&ldquo;Download the tooling repo's files onto the machine so we can use its actions and scripts.&rdquo;</td></tr>
+<tr><td>④</td><td><code>path: tooling</code></td><td>&ldquo;Clone it into <code>tooling/</code> (the wrapper repo is cloned separately into <code>wrapper/</code> by Setup).&rdquo;</td></tr>
+<tr><td>⑤</td><td><code>uses: ./...actions/setup</code></td><td>&ldquo;Run a reusable bundle of steps. This one mints a token, clones the wrapper, makes a branch, installs the Claude CLI.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is a composite action?</div>
+  <p>A <strong>composite action</strong> is a reusable bundle of steps with its own <code>action.yml</code>. The conductor calls them with <code>uses: ./path</code> — like calling a function. <code>setup</code>, <code>claude-sync</code>, <code>build/cordova</code>, and <code>open-pr</code> are all composite actions. The conductor just lists them in order; each does one chunk of work. See <a href="walk-claude-sync-action.html">claude-sync</a> and <a href="walk-build-cordova-action.html">build-cordova</a>.</p>
+</div>
+<p>The <code>Resolve Claude config</code> step (lines 108&ndash;127) picks the <strong>prompt file</strong> and the <strong>tool allowlist</strong> for the wrapper. For Cordova it selects <code>prompts/sync-orchestrator-cordova.md</code> (the <a href="walk-orchestrator-prompt-cordova.html">program Claude runs</a>) and pins <code>python3</code> to <em>only</em> the diff tool — so Claude can't run arbitrary Python. That allowlist is the security fence.</p>
+<hr class="rule">
+<h2><span class="h2-mark">03</span>The two Sync steps and their if: (line-by-line begins)</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">.github/workflows/sync.yml</span></div>
+  <pre>      - name: Sync Android
+        id: sync_android
+        if: inputs.android_version != '' &amp;&amp; !inputs.skip_sync   # <span class="marker">①</span>
+        uses: ./tooling/.github/actions/claude-sync
+        ...
+      - name: Sync iOS
+        id: sync_ios
+        if: inputs.ios_version != '' &amp;&amp; !inputs.skip_sync       # <span class="marker">②</span>
+        uses: ./tooling/.github/actions/claude-sync
+        ...</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>The condition</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>inputs.android_version != '' &amp;&amp; !inputs.skip_sync</code></td><td>&ldquo;Run the Android sync <strong>only if</strong> an Android version was given (<code>!= ''</code> means <em>not empty</em>) <strong>AND</strong> the user didn't ask to skip syncing (<code>!skip_sync</code>).&rdquo;</td></tr>
+<tr><td>②</td><td>same, for iOS</td><td>&ldquo;Same rule, for the iOS sync.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: reading &amp;amp;&amp;amp;, !, and != ''</div>
+  <p>These are <strong>boolean operators</strong>, same as most languages. <code>&amp;&amp;</code> = AND (both sides must be true). <code>!x</code> = NOT x (flips true/false). <code>x != ''</code> = &ldquo;x is not the empty string.&rdquo; So <code>android_version != '' &amp;&amp; !skip_sync</code> reads as: <em>&ldquo;there is an Android version, and skip_sync is off.&rdquo;</em> Each step's <code>id:</code> (e.g. <code>sync_android</code>) lets later steps refer back to its <strong>outcome</strong>.</p>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is an outcome?</div>
+  <p>Every step records an <code>outcome</code>: <code>success</code>, <code>failure</code>, <code>cancelled</code>, or <code>skipped</code> (if its <code>if:</code> was false). Later steps read it as <code>steps.&lt;id&gt;.outcome</code>. The whole commit/PR decision below is built from these outcome values.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">04</span>The gating expression, decoded line-by-line (the hard part)</h2>
+<p>These three conditions guard <strong>Commit</strong>, <strong>Push</strong>, and <strong>Open PR</strong>. Here is the full <strong>Open combined PR</strong> gate:</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">.github/workflows/sync.yml</span></div>
+  <pre>      - name: Open combined PR
+        if: |
+          !cancelled()                                                          # <span class="marker">①</span>
+          &amp;&amp; env.no_changes != 'true'                                           # <span class="marker">②</span>
+          &amp;&amp; steps.sync_android.outcome != 'failure'                            # <span class="marker">③</span>
+          &amp;&amp; steps.sync_ios.outcome != 'failure'                                # <span class="marker">④</span>
+          &amp;&amp; (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')   # <span class="marker">⑤</span>
+        uses: ./tooling/.github/actions/open-pr
+        ...</pre>
+</div>
+<p>Read it as <strong>one big AND</strong> — <em>every</em> line must be true for the step to run:</p>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>The clause</th><th>In plain English</th><th>Why it's there</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>!cancelled()</code></td><td>&ldquo;The run was NOT cancelled by a human or timeout.&rdquo;</td><td>Default Actions behaviour skips later steps once <em>anything</em> fails. We need this step to run <strong>even after a failed post-sync build</strong>, so we explicitly say &ldquo;as long as we weren't cancelled.&rdquo;</td></tr>
+<tr><td>②</td><td><code>env.no_changes != 'true'</code></td><td>&ldquo;Claude actually changed files — the commit step didn't flag a no-op.&rdquo;</td><td>If Claude made zero edits, there's nothing to open a PR for. The Commit step sets <code>no_changes=true</code> in that case.</td></tr>
+<tr><td>③</td><td><code>steps.sync_android.outcome != 'failure'</code></td><td>&ldquo;The Android sync did <strong>not</strong> fail.&rdquo;</td><td>A <em>failed</em> sync means Claude errored mid-edit — don't ship a half-done PR. Note: a <em>skipped</em> Android sync (no version) is NOT a failure, so this still passes.</td></tr>
+<tr><td>④</td><td><code>steps.sync_ios.outcome != 'failure'</code></td><td>&ldquo;The iOS sync did <strong>not</strong> fail.&rdquo;</td><td>Same guard for iOS.</td></tr>
+<tr><td>⑤</td><td><code>(android == 'success' || ios == 'success')</code></td><td>&ldquo;<strong>At least one</strong> platform sync actually succeeded.&rdquo;</td><td><code>||</code> is OR. Both syncs being <em>skipped</em> would pass ③ and ④ but produce no work — this clause requires at least one real success before opening a PR.</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what does !cancelled() mean — and why is it everywhere?</div>
+  <p>By default, GitHub Actions <strong>skips</strong> any remaining step the moment an earlier step fails. That's usually what you want — but here a <em>post-sync build failure</em> should still let the PR open (with a &ldquo;build-failed&rdquo; label) so a human can look. To override the default skip, every &ldquo;should still run&rdquo; step starts with a status function: <code>!cancelled()</code> (&ldquo;run unless the whole thing was cancelled&rdquo;), <code>always()</code> (&ldquo;run no matter what&rdquo;), or <code>failure()</code> (&ldquo;run only if something failed&rdquo;). Without one of these, the skip-on-failure default wins. See the <a href="glossary.html">Glossary</a>.</p>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: why != 'failure' instead of == 'success'?</div>
+  <p>Subtle but important. A step that was <strong>skipped</strong> (its <code>if:</code> was false — e.g. no iOS version) has outcome <code>skipped</code>, <em>not</em> <code>success</code>. If the gate said <code>ios.outcome == 'success'</code> it would wrongly block Android-only runs. Saying <code>ios.outcome != 'failure'</code> lets <em>skipped</em> through while still blocking <em>failed</em>. Clause ⑤ then separately insists <em>at least one</em> really succeeded.</p>
+</div>
+<p>The <strong>Commit</strong> and <strong>Push</strong> gates are the same expression with one extra guard: Push and Open-PR add <code>env.no_changes != 'true'</code>, and Push obviously only runs after a successful commit. Commit sets that <code>no_changes</code> flag:</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">.github/workflows/sync.yml</span></div>
+  <pre>      - name: Commit changes
+        if: |
+          !cancelled()
+          &amp;&amp; steps.sync_android.outcome != 'failure'
+          &amp;&amp; steps.sync_ios.outcome != 'failure'
+          &amp;&amp; (steps.sync_android.outcome == 'success' || steps.sync_ios.outcome == 'success')
+        working-directory: wrapper
+        shell: bash
+        run: |
+          git add -A
+          if git diff --cached --quiet; then                        # <span class="marker">①</span> did anything actually change?
+            echo "::warning::No changes to commit. Sync was a no-op."
+            echo "no_changes=true" &gt;&gt; "$GITHUB_ENV"                 # <span class="marker">②</span> remember it for later steps
+            exit 0
+          fi
+          git commit -m "$(cat &lt;&lt;EOF                                # <span class="marker">③</span> multi-line commit message
+          task: sync wrapper with native release $(date -u +%Y-%m-%d)
+          ...
+          EOF
+          )"</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this does</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>git diff --cached --quiet</code></td><td>&ldquo;Are there staged changes? <code>--quiet</code> makes git return success (0) if there are NONE.&rdquo; So the <code>if</code> body runs precisely when there is <em>nothing</em> to commit.</td></tr>
+<tr><td>②</td><td><code>&gt;&gt; "$GITHUB_ENV"</code></td><td>&ldquo;Write <code>no_changes=true</code> into the shared env file so the Push and Open-PR <code>if:</code> can read <code>env.no_changes</code>.&rdquo;</td></tr>
+<tr><td>③</td><td><code>cat &lt;&lt;EOF ... EOF</code></td><td>&ldquo;A <strong>heredoc</strong> — a way to write a multi-line string (the commit message) inline in the shell.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">05</span>Always-run housekeeping (annotated highlights)</h2>
+<p>A few steps are deliberately set to run regardless of success/failure:</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">.github/workflows/sync.yml</span></div>
+  <pre>      - name: Flag post-sync build failure
+        if: always() &amp;&amp; (steps.outcomes.outputs.android == 'failure' || steps.outcomes.outputs.ios == 'failure')
+        ...                                   # re-asserts a red run so maintainers get pinged
+      - name: Slack ping on failure
+        if: failure() &amp;&amp; steps.setup.outcome == 'success'
+        ...                                   # only ping once setup got far enough to matter
+      - name: Upload sync outputs as artifacts
+        if: always()                          # ALWAYS save the JSON/stream/stderr logs for debugging
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-outputs
+          path: |
+            claude-output-android.json
+            claude-output-ios.json
+            claude-stream-android.jsonl
+            ...
+          if-no-files-found: ignore</pre>
+</div>
+<ul>
+  <li><strong><code>Flag post-sync build failure</code></strong> uses <code>always()</code> so that even though the PR already opened, a failed <em>build</em> still turns the run red (and triggers Slack). The PR carries a <code>build-failed</code> label.</li>
+  <li><strong><code>Slack ping on failure</code></strong> uses <code>failure()</code> — it fires only when something failed, and only if <code>setup</code> got far enough to be meaningful.</li>
+  <li><strong><code>Upload sync outputs</code></strong> uses <code>always()</code> + <code>if-no-files-found: ignore</code> so the debug artifacts (the exact JSON/stream Claude produced — see <a href="walk-claude-sync-action.html">claude-sync</a>) are saved even on a crash, and a missing file doesn't itself fail the step.</li>
+</ul>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: always() vs failure() vs !cancelled()</div>
+  <p>Three status functions, three behaviours: <strong><code>always()</code></strong> runs no matter what (even on cancel). <strong><code>failure()</code></strong> runs only if a prior step failed. <strong><code>!cancelled()</code></strong> runs unless the run was cancelled — i.e. on success <em>or</em> failure, but not cancel. Pick by intent: &ldquo;save logs no matter what&rdquo; &rarr; <code>always()</code>; &ldquo;ping me only when broken&rdquo; &rarr; <code>failure()</code>; &ldquo;open the PR even on a build failure, but not if someone hit cancel&rdquo; &rarr; <code>!cancelled()</code>.</p>
+</div>
+<div class="check-block">
+  <div class="check-head">Check yourself</div>
+<details class="qcard">
+  <summary>In the Open-PR gate, why <code>sync_ios.outcome != 'failure'</code> instead of <code>== 'success'</code>?</summary>
+  <div class="answer">
+    <p>Because an Android-only run <strong>skips</strong> the iOS sync, and a skipped step's outcome is <code>skipped</code>, not <code>success</code>. <code>== 'success'</code> would wrongly block that run. <code>!= 'failure'</code> lets <em>skipped</em> through while still blocking a genuine <em>failure</em>. Clause ⑤ separately guarantees at least one platform succeeded.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>What does <code>!cancelled()</code> at the front of the gate buy us?</summary>
+  <div class="answer">
+    <p>It overrides Actions' default &ldquo;skip everything after a failure.&rdquo; A <em>post-sync build</em> failure should still let the PR open (with a build-failed label) so a human can review. <code>!cancelled()</code> says &ldquo;run on success or failure — just not if the whole run was cancelled.&rdquo;</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Where does <code>env.no_changes</code> come from, and what does it gate?</summary>
+  <div class="answer">
+    <p>The <strong>Commit changes</strong> step sets <code>no_changes=true</code> (into <code>$GITHUB_ENV</code>) when <code>git diff --cached --quiet</code> finds nothing staged. The <strong>Push</strong> and <strong>Open PR</strong> steps then refuse to run when <code>env.no_changes == 'true'</code> — no point pushing/PR-ing an empty diff.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why is the artifact-upload step <code>if: always()</code>?</summary>
+  <div class="answer">
+    <p>So Claude's output JSON, the full event stream, and stderr are saved <strong>even when the run failed</strong> — those are exactly the files you need to debug a failure. <code>if-no-files-found: ignore</code> keeps a missing file from failing the upload itself.</p>
+  </div>
+</details>
+</div>
+</main>
+
+<footer class="kit-foot">
+  <a href="walk-diff-10-main-orchestration.html">&#9664; diff tool — main()</a>
+  <a href="index.html">&#8962; Kit home</a>
+  <a href="walk-claude-sync-action.html">The Brain (claude-sync) &#9654;</a>
+</footer>
+
+<script>
+
+  const config = {
+    fitPadding: 28,
+    minHeight: 360,
+    maxHeightPx: 1100,
+    maxHeightVh: 0.86,
+    maxInitialZoom: 1.8,
+    minZoom: 0.08,
+    maxZoom: 6.5,
+    zoomStep: 0.14,
+    readabilityFloor: 0.5
+  };
+
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  let activeDrag = null;
+  addEventListener('mousemove', (e) => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const pageBg = isDark ? '#0b1626' : '#eef2f7';
+
+
+  function initDiagram(shell) {
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if (!wrap || !viewport || !canvas || !source || !label) {
+      console.error('initDiagram: missing required elements in', shell);
+      return;
+    }
+
+    let zoom = 1, fitMode = 'contain', panX = 0, panY = 0, svgW = 0, svgH = 0;
+    let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+
+    function constrainPan() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const rW = svgW * zoom, rH = svgH * zoom, pad = config.fitPadding;
+      panX = (rW + pad * 2 <= vpW) ? (vpW - rW) / 2 : clamp(panX, vpW - rW - pad, pad);
+      panY = (rH + pad * 2 <= vpH) ? (vpH - rH) / 2 : clamp(panY, vpH - rH - pad, pad);
+    }
+    function applyTransform() {
+      const svg = canvas.querySelector('svg');
+      if (!svg || !svgW) return;
+      constrainPan();
+      svg.style.width = (svgW * zoom) + 'px';
+      svg.style.height = (svgH * zoom) + 'px';
+      canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom * 100) + '% — ' + fitMode;
+    }
+    function canPan() {
+      const rW = svgW * zoom, rH = svgH * zoom;
+      return rW + config.fitPadding * 2 > viewport.clientWidth
+          || rH + config.fitPadding * 2 > viewport.clientHeight;
+    }
+    function computeSmartFit() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const aW = Math.max(80, vpW - config.fitPadding * 2);
+      const aH = Math.max(80, vpH - config.fitPadding * 2);
+      const contain = Math.min(aW / svgW, aH / svgH);
+      let z = contain, mode = 'contain';
+      if (contain < config.readabilityFloor) {
+        const chartR = svgH / svgW, vpR = vpH / Math.max(vpW, 1);
+        if (chartR >= vpR) { z = aW / svgW; mode = 'width-priority'; }
+        else { z = aH / svgH; mode = 'height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram() {
+      if (!svgW) return;
+      const fit = computeSmartFit();
+      zoom = fit.zoom; fitMode = fit.mode;
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function setOneToOne() {
+      zoom = clamp(1, config.minZoom, config.maxZoom);
+      fitMode = '1:1';
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function zoomAround(factor, cx, cy) {
+      const next = clamp(zoom * factor, config.minZoom, config.maxZoom);
+      const ratio = next / zoom;
+      panX = cx - ratio * (cx - panX);
+      panY = cy - ratio * (cy - panY);
+      zoom = next; fitMode = 'custom';
+      applyTransform();
+    }
+    function readSvgNaturalSize(svg) {
+      let w = 0, h = 0;
+      if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
+      if (!w) { w = parseFloat(svg.getAttribute('width')) || 0; h = parseFloat(svg.getAttribute('height')) || 0; }
+      if (!w) { const b = svg.getBBox(); w = b.width; h = b.height; }
+      if (!w) { const r = svg.getBoundingClientRect(); w = r.width || 1000; h = r.height || 700; }
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight() {
+      if (!svgW) return;
+      const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+      const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
+      const maxVp = Math.floor(innerHeight * config.maxHeightVh);
+      const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight + 40, maxVp));
+      wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + 'px';
+    }
+    function openInNewTab() {
+      const svg = canvas.querySelector('svg');
+      if (!svg) return;
+      const clone = svg.cloneNode(true);
+      clone.style.width = ''; clone.style.height = '';
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Diagram</title><style>
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:${pageBg};padding:40px;box-sizing:border-box}
+      svg{max-width:100%;max-height:90vh;height:auto}
+      </style></head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    }
+    function render() {
+      const svgNode = canvas.querySelector('svg');
+      if (!svgNode) { label.textContent = 'Error: No diagram'; return; }
+      const size = readSvgNaturalSize(svgNode);
+      svgW = size.w; svgH = size.h;
+      svgNode.removeAttribute('width');
+      svgNode.removeAttribute('height');
+      svgNode.style.maxWidth = 'none';
+      svgNode.style.display = 'block';
+      setAdaptiveHeight();
+      fitDiagram();
+    }
+
+    const actions = {
+      'zoom-in': () => zoomAround(1 + config.zoomStep, viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-out': () => zoomAround(1 / (1 + config.zoomStep), viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-fit': fitDiagram,
+      'zoom-one': setOneToOne,
+      'zoom-expand': openInNewTab
+    };
+    Object.entries(actions).forEach(([action, handler]) => {
+      wrap.querySelector(`[data-action="${action}"]`)?.addEventListener('click', handler);
+    });
+
+    viewport.addEventListener('dblclick', fitDiagram);
+
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep);
+        zoomAround(factor, e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+      if (canPan()) {
+        e.preventDefault();
+        panX -= e.deltaX; panY -= e.deltaY;
+        applyTransform();
+      }
+    }, { passive: false });
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.zoom-controls') || !canPan()) return;
+      wrap.classList.add('is-panning');
+      sx = e.clientX; sy = e.clientY; spx = panX; spy = panY;
+      e.preventDefault();
+      activeDrag = {
+        onMove: (ev) => { panX = spx + (ev.clientX - sx); panY = spy + (ev.clientY - sy); applyTransform(); },
+        onEnd: () => { wrap.classList.remove('is-panning'); }
+      };
+    });
+
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx * dx + dy * dy);
+        const r = viewport.getBoundingClientRect();
+        touchCx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+        touchCy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      }
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && canPan()) {
+        if (touchDist > 0) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; touchDist = 0; }
+        e.preventDefault();
+        panX = spx + (e.touches[0].clientX - sx);
+        panY = spy + (e.touches[0].clientY - sy);
+        applyTransform();
+      } else if (e.touches.length === 2 && touchDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        zoomAround(d / touchDist, touchCx, touchCy);
+        touchDist = d;
+      }
+    }, { passive: false });
+
+    new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+
+    render();
+  }
+
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+</body>
+</html>

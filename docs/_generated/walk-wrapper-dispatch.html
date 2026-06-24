@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>native-release-sync.yml — the trigger form — CleverTap Wrapper-Sync Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    /* accents: deep blue + gold, with semantic supporting tones */
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .grid > *, .flex > * { min-width: 0; }
+
+  body {
+    background-color: var(--bg);
+    /* blueprint grid: fine lines + heavier major lines */
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ LAYOUT (TOC + main) ============ */
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 44px;
+  }
+  .main { min-width: 0; }
+
+  /* ---- TOC ---- */
+  .toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    grid-row: 1 / -1;
+    padding: 16px 0;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+  }
+  .toc::-webkit-scrollbar { width: 3px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .toc-mark {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 0 0 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc a {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.35;
+    margin-bottom: 1px;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface2); }
+  .toc a.active { color: var(--text-bright); border-left-color: var(--gold); background: var(--surface2); }
+
+  /* ============ HERO ============ */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 22px;
+    height: 1px;
+    background: var(--gold);
+  }
+  h1 {
+    font-size: clamp(30px, 4.4vw, 50px);
+    font-weight: 700;
+    letter-spacing: -1.2px;
+    line-height: 1.04;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: clamp(16px, 1.1vw + 12px, 19px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 70ch;
+    margin-bottom: 12px;
+  }
+  .lead strong { color: var(--text); font-weight: 600; }
+  .lead code, .caption code, .terms code, .ve-card code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .chip::before {
+    content: '';
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c, var(--gold));
+  }
+
+  /* ============ SECTION HEADS ============ */
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 56px 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 24px;
+  }
+  .sec-head__num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    border: 1px solid var(--border-bright);
+    border-radius: 5px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .sec-head__title {
+    font-size: clamp(20px, 2.4vw, 27px);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-bright);
+  }
+  .sec-intro {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    max-width: 74ch;
+    margin: 14px 0 22px;
+  }
+
+  /* ============ MERMAID CONTAINER (from template) ============ */
+  .diagram-shell { position: relative; }
+  .diagram-shell__hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    opacity: 0.75;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .diagram-shell__hint::before {
+    content: '⌖';
+    color: var(--gold);
+    font-size: 13px;
+  }
+
+  .mermaid-wrap {
+    position: relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 32px 24px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+    cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+
+  .zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+    z-index: 10;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 2px;
+    box-shadow: 0 1px 4px rgba(13, 25, 41, 0.08);
+  }
+  .zoom-controls button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--gold); }
+
+  .mermaid-viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+  }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 0 6px;
+    align-self: center;
+    white-space: nowrap;
+  }
+
+  /* ============ MERMAID SVG OVERRIDES ============ */
+  .mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 16px !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; font-family: var(--font-mono) !important; font-size: 12.5px !important; }
+  .mermaid .edgeLabel rect, .mermaid .edgeLabel foreignObject { fill: var(--surface) !important; }
+  .mermaid .cluster rect { stroke-width: 1.25px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+  .mermaid .edge-pattern-solid { stroke-width: 1.5px !important; }
+  /* sequence diagram */
+  .mermaid .actor { stroke-width: 1.5px !important; }
+  .mermaid text.actor, .mermaid .actor > tspan { font-family: var(--font-body) !important; }
+  .mermaid .messageText { font-family: var(--font-mono) !important; font-size: 12px !important; fill: var(--text) !important; }
+  .mermaid .loopText, .mermaid .loopText tspan { font-family: var(--font-mono) !important; fill: var(--text-dim) !important; }
+  .mermaid .noteText { font-family: var(--font-body) !important; }
+
+  /* ============ CAPTION ============ */
+  .caption {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+  .caption strong { color: var(--text); font-weight: 600; }
+
+  /* ============ ONION LEGEND ============ */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border-bright); }
+
+  /* ============ KEY TERMS ============ */
+  .terms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .term {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 15px 17px;
+    position: relative;
+  }
+  .term--hero {
+    background: color-mix(in srgb, var(--surface) 90%, var(--gold) 10%);
+    border-color: color-mix(in srgb, var(--border) 40%, var(--gold) 60%);
+    box-shadow: 0 3px 14px rgba(13, 25, 41, 0.07);
+    grid-column: 1 / -1;
+  }
+  .term__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .term__label::before {
+    content: '';
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+  }
+  .term p { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+  .term p strong { color: var(--text); font-weight: 600; }
+
+  .pullquote {
+    margin: 28px 0 8px;
+    padding: 4px 0 4px 22px;
+    border-left: 3px solid var(--gold);
+  }
+  .pullquote p {
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.4;
+    color: var(--text-bright);
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1000px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 0 20px 28px; }
+    .toc {
+      position: sticky; top: 0; z-index: 200;
+      grid-row: auto; max-height: none;
+      display: flex; gap: 4px; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      margin: 0 -20px 4px;
+    }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc-title, .toc-mark { display: none; }
+    .toc a {
+      white-space: nowrap; flex-shrink: 0;
+      border-left: none; border-bottom: 2px solid transparent;
+      border-radius: 4px 4px 0 0; padding: 6px 10px; font-size: 10.5px;
+    }
+    .toc a.active { border-left: none; border-bottom-color: var(--gold); }
+    .main { padding-top: 22px; }
+    .sec-head { scroll-margin-top: 54px; }
+  }
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+</style>
+
+<style>
+  /* ====== KIT PAGE CHROME (content pages) ====== */
+  .kit-nav, .kit-foot {
+    max-width: 1000px; margin: 0 auto; display: flex;
+    align-items: center; justify-content: space-between; gap: 16px;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-nav {
+    padding: 18px 40px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .kit-nav a, .kit-foot a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover, .kit-foot a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    flex: 1; text-align: center; color: var(--text-dim);
+    letter-spacing: 1.5px; text-transform: uppercase; font-size: 10.5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kit-foot {
+    margin-top: 64px; padding: 24px 40px 48px; border-top: 1px solid var(--border);
+  }
+  .kit-content {
+    max-width: 1000px; margin: 0 auto; padding: 36px 40px 0;
+  }
+  .kit-content > * { animation: fadeUp 0.45s ease-out both; }
+
+  .page-eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  }
+  .page-eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  .kit-content h1 { margin-bottom: 20px; }
+
+  .kit-content h2 {
+    font-size: clamp(19px, 2.2vw, 25px); font-weight: 600; letter-spacing: -0.5px;
+    color: var(--text-bright); margin: 48px 0 8px; padding-bottom: 11px;
+    border-bottom: 1px solid var(--border); scroll-margin-top: 80px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .kit-content h2 .h2-mark {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--gold);
+    border: 1px solid var(--border-bright); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;
+  }
+  .kit-content h3 {
+    font-size: 16.5px; font-weight: 600; color: var(--text-bright); margin: 28px 0 6px;
+  }
+  .kit-content p { font-size: 15px; line-height: 1.7; color: var(--text); margin: 12px 0; }
+  .kit-content p.muted { color: var(--text-dim); }
+  .kit-content ul, .kit-content ol { margin: 12px 0 12px 22px; }
+  .kit-content li { font-size: 15px; line-height: 1.7; color: var(--text); margin: 5px 0; }
+  .kit-content strong { color: var(--text-bright); font-weight: 600; }
+  .kit-content em { font-style: italic; }
+  .kit-content a { color: var(--accent); }
+  .kit-content code {
+    font-family: var(--font-mono); font-size: 0.84em; background: var(--blue-dim);
+    color: var(--blue); padding: 1px 5px; border-radius: 3px;
+  }
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+
+  /* ====== CODE CARD ====== */
+  .code-card {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: 9px; margin: 18px 0; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(13,25,41,0.05);
+  }
+  .code-card__head {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  }
+  .code-card__head .lang {
+    color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .code-card__head .file { color: var(--text); }
+  .code-card pre {
+    margin: 0; padding: 16px 18px; overflow-x: auto;
+    font-family: var(--font-mono); font-size: 12.8px; line-height: 1.65;
+    color: var(--text); white-space: pre-wrap; word-break: break-word;
+  }
+  .code-card pre .marker { color: var(--gold); font-weight: 600; }
+
+  /* ====== CALLOUTS ====== */
+  .callout {
+    border: 1px solid var(--border); border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 18px 0;
+    background: var(--cbg, var(--surface));
+  }
+  .callout__label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--c, var(--blue));
+    margin-bottom: 7px; display: flex; align-items: center; gap: 7px;
+  }
+  .callout__label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .callout p { margin: 6px 0; font-size: 14px; line-height: 1.65; color: var(--text); }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--amber { --c: var(--amber); --cbg: var(--amber-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ====== DATA TABLE ====== */
+  .data-table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.data-table th, table.data-table td {
+    text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.6;
+  }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--surface2); color: var(--text-bright);
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; font-weight: 600; z-index: 1;
+  }
+  table.data-table tbody tr:nth-child(odd) { background: var(--surface); }
+  table.data-table tbody tr:nth-child(even) { background: var(--surface2); }
+  table.data-table tbody tr:hover { background: var(--blue-dim); }
+  table.data-table td.num { text-align: right; font-family: var(--font-mono); color: var(--gold); }
+  table.data-table code { background: var(--blue-dim); }
+
+  /* ====== DETAILS (Check yourself) ====== */
+  .check-block { margin: 20px 0; }
+  .check-block .check-head {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin: 26px 0 12px;
+  }
+  .check-block .check-head::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  details.qcard {
+    border: 1px solid var(--border); border-radius: 9px; margin: 10px 0;
+    background: var(--surface); overflow: hidden;
+  }
+  details.qcard[open] { border-color: var(--border-bright); }
+  details.qcard summary {
+    cursor: pointer; list-style: none; padding: 13px 16px; font-size: 14.5px;
+    font-weight: 500; color: var(--text-bright); display: flex; gap: 10px; align-items: flex-start;
+  }
+  details.qcard summary::-webkit-details-marker { display: none; }
+  details.qcard summary::before {
+    content: 'Q'; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--gold); border: 1px solid var(--border-bright); border-radius: 4px;
+    padding: 1px 6px; flex-shrink: 0; margin-top: 1px;
+  }
+  details.qcard[open] summary { border-bottom: 1px solid var(--border); background: var(--surface2); }
+  details.qcard .answer { padding: 14px 16px 16px; font-size: 14px; line-height: 1.7; color: var(--text); }
+  details.qcard .answer p { margin: 0 0 8px; }
+  details.qcard .answer p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 700px) {
+    .kit-nav, .kit-foot, .kit-content { padding-left: 20px; padding-right: 20px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+
+</head>
+<body>
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">WALKTHROUGHS · THE TRIGGER FORM</span>
+  <a href="runbook-01-prerequisites.html">Next: Runbook — Prerequisites &#9654;</a>
+</nav>
+
+<main class="kit-content">
+<div class="page-eyebrow">walkthroughs · the trigger form</div>
+<h1><code>native-release-sync.yml</code> — the trigger form</h1>
+<div class="callout callout--info">
+  <div class="callout__label">In one sentence</div>
+  <p>This 73-line workflow lives in the <em>wrapper</em> repo (clevertap-cordova); it's a thin &ldquo;button&rdquo; a maintainer presses, collecting the target versions and handing everything to the reusable <a href="walk-sync-yml.html">conductor</a> in the tooling repo.</p>
+  <p><strong>File:</strong> <code>clevertap-cordova/.github/workflows/native-release-sync.yml</code>.</p>
+</div>
+<p>This is where a sync <strong>starts</strong>. There's no logic here to speak of — it's a form definition plus one function call. Annotated highlights: the <code>workflow_dispatch</code> inputs, and the <code>uses:</code> line that routes to the central tooling.</p>
+<h2><span class="h2-mark">◎</span>The shape (read this first)</h2>
+<section class="diagram-shell">
+  <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom &middot; drag to pan &middot; double-click to fit &middot; &#9215; opens full size</p>
+  <div class="mermaid-wrap">
+    <div class="zoom-controls">
+      <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+      <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+      <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+      <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+      <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+      <span class="zoom-label">Loading&hellip;</span>
+    </div>
+    <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"><style>foreignObject div { overflow: visible !important; }</style><svg id="mermaid-1781628188947" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 302.984375px;" viewBox="0 0 302.984375 750" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#mermaid-1781628188947{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#mermaid-1781628188947 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#mermaid-1781628188947 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#mermaid-1781628188947 .error-icon{fill:#552222;}#mermaid-1781628188947 .error-text{fill:#552222;stroke:#552222;}#mermaid-1781628188947 .edge-thickness-normal{stroke-width:1px;}#mermaid-1781628188947 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1781628188947 .edge-pattern-solid{stroke-dasharray:0;}#mermaid-1781628188947 .edge-thickness-invisible{stroke-width:0;fill:none;}#mermaid-1781628188947 .edge-pattern-dashed{stroke-dasharray:3;}#mermaid-1781628188947 .edge-pattern-dotted{stroke-dasharray:2;}#mermaid-1781628188947 .marker{fill:#333333;stroke:#333333;}#mermaid-1781628188947 .marker.cross{stroke:#333333;}#mermaid-1781628188947 svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mermaid-1781628188947 p{margin:0;}#mermaid-1781628188947 .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1781628188947 .cluster-label text{fill:#333;}#mermaid-1781628188947 .cluster-label span{color:#333;}#mermaid-1781628188947 .cluster-label span p{background-color:transparent;}#mermaid-1781628188947 .label text,#mermaid-1781628188947 span{fill:#333;color:#333;}#mermaid-1781628188947 .node rect,#mermaid-1781628188947 .node circle,#mermaid-1781628188947 .node ellipse,#mermaid-1781628188947 .node polygon,#mermaid-1781628188947 .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#mermaid-1781628188947 .rough-node .label text,#mermaid-1781628188947 .node .label text,#mermaid-1781628188947 .image-shape .label,#mermaid-1781628188947 .icon-shape .label{text-anchor:middle;}#mermaid-1781628188947 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#mermaid-1781628188947 .rough-node .label,#mermaid-1781628188947 .node .label,#mermaid-1781628188947 .image-shape .label,#mermaid-1781628188947 .icon-shape .label{text-align:center;}#mermaid-1781628188947 .node.clickable{cursor:pointer;}#mermaid-1781628188947 .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#mermaid-1781628188947 .arrowheadPath{fill:#333333;}#mermaid-1781628188947 .edgePath .path{stroke:#333333;stroke-width:2.0px;}#mermaid-1781628188947 .flowchart-link{stroke:#333333;fill:none;}#mermaid-1781628188947 .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628188947 .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#mermaid-1781628188947 .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628188947 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-1781628188947 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid-1781628188947 .cluster text{fill:#333;}#mermaid-1781628188947 .cluster span{color:#333;}#mermaid-1781628188947 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#mermaid-1781628188947 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#mermaid-1781628188947 rect.text{fill:none;stroke-width:0;}#mermaid-1781628188947 .icon-shape,#mermaid-1781628188947 .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628188947 .icon-shape p,#mermaid-1781628188947 .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#mermaid-1781628188947 .icon-shape .label rect,#mermaid-1781628188947 .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628188947 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#mermaid-1781628188947 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#mermaid-1781628188947 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="mermaid-1781628188947_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628188947_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628188947_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628188947_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628188947_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628188947_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><g class="root"><g class="clusters"></g><g class="edgePaths"><path d="M151.492,110L151.492,114.167C151.492,118.333,151.492,126.667,151.492,134.333C151.492,142,151.492,149,151.492,152.5L151.492,156" id="L_A_B_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_A_B_0" data-points="W3sieCI6MTUxLjQ5MjE4NzUsInkiOjExMH0seyJ4IjoxNTEuNDkyMTg3NSwieSI6MTM1fSx7IngiOjE1MS40OTIxODc1LCJ5IjoxNjB9XQ==" marker-end="url(#mermaid-1781628188947_flowchart-v2-pointEnd)"></path><path d="M151.492,310L151.492,314.167C151.492,318.333,151.492,326.667,151.492,334.333C151.492,342,151.492,349,151.492,352.5L151.492,356" id="L_B_C_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_B_C_0" data-points="W3sieCI6MTUxLjQ5MjE4NzUsInkiOjMxMH0seyJ4IjoxNTEuNDkyMTg3NSwieSI6MzM1fSx7IngiOjE1MS40OTIxODc1LCJ5IjozNjB9XQ==" marker-end="url(#mermaid-1781628188947_flowchart-v2-pointEnd)"></path><path d="M151.492,438L151.492,442.167C151.492,446.333,151.492,454.667,151.492,462.333C151.492,470,151.492,477,151.492,480.5L151.492,484" id="L_C_D_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_C_D_0" data-points="W3sieCI6MTUxLjQ5MjE4NzUsInkiOjQzOH0seyJ4IjoxNTEuNDkyMTg3NSwieSI6NDYzfSx7IngiOjE1MS40OTIxODc1LCJ5Ijo0ODh9XQ==" marker-end="url(#mermaid-1781628188947_flowchart-v2-pointEnd)"></path><path d="M151.492,614L151.492,618.167C151.492,622.333,151.492,630.667,151.492,638.333C151.492,646,151.492,653,151.492,656.5L151.492,660" id="L_D_E_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_D_E_0" data-points="W3sieCI6MTUxLjQ5MjE4NzUsInkiOjYxNH0seyJ4IjoxNTEuNDkyMTg3NSwieSI6NjM5fSx7IngiOjE1MS40OTIxODc1LCJ5Ijo2NjR9XQ==" marker-end="url(#mermaid-1781628188947_flowchart-v2-pointEnd)"></path></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_A_B_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_B_C_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_C_D_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_D_E_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default  " id="flowchart-A-0" transform="translate(151.4921875, 59)"><rect class="basic label-container" style="" x="-130" y="-51" width="260" height="102"></rect><g class="label" style="" transform="translate(-100, -36)"><rect></rect><foreignObject width="200" height="92"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>maintainer opens the Actions tab<br>clicks 'Run workflow'</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-B-1" transform="translate(151.4921875, 235)"><rect class="basic label-container" style="" x="-130" y="-75" width="260" height="150"></rect><g class="label" style="" transform="translate(-100, -60)"><rect></rect><foreignObject width="200" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>fills the form:<br>android_version, ios_version,<br>module, model, base_ref, skip_sync</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-C-3" transform="translate(151.4921875, 399)"><rect class="basic label-container" style="" x="-112.703125" y="-39" width="225.40625" height="78"></rect><g class="label" style="" transform="translate(-82.703125, -24)"><rect></rect><foreignObject width="165.40625" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>workflow_dispatch fires<br>(this file)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-D-5" transform="translate(151.4921875, 551)"><rect class="basic label-container" style="" x="-143.4921875" y="-63" width="286.984375" height="126"></rect><g class="label" style="" transform="translate(-113.4921875, -48)"><rect></rect><foreignObject width="226.984375" height="116"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>uses: CleverTap/clevertap-wrapper-tooling<br>/.github/workflows/sync.yml@v1<br>(the reusable conductor)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-E-7" transform="translate(151.4921875, 703)"><rect class="basic label-container" style="" x="-107.1484375" y="-39" width="214.296875" height="78"></rect><g class="label" style="" transform="translate(-77.1484375, -24)"><rect></rect><foreignObject width="154.296875" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>with: inputs  +  secrets:<br>(forwarded down)</p></span></div></foreignObject></g></g></g></g></g></svg></div></div>
+  </div>
+  <script type="text/plain" class="diagram-source">
+flowchart TD
+    A["maintainer opens the Actions tab<br/>clicks 'Run workflow'"] --> B["fills the form:<br/>android_version, ios_version,<br/>module, model, base_ref, skip_sync"]
+    B --> C["workflow_dispatch fires<br/>(this file)"]
+    C --> D["uses: CleverTap/clevertap-wrapper-tooling<br/>/.github/workflows/sync.yml@v1<br/>(the reusable conductor)"]
+    D --> E["with: inputs  +  secrets:<br/>(forwarded down)"]
+  </script>
+</section>
+<div class="callout callout--amber">
+  <div class="callout__label">Analogy</div>
+  <p>This file is the <strong>order form</strong> at a counter. You tick the boxes (which version, which model) and hand it over; the kitchen (<a href="walk-sync-yml.html">sync.yml</a>) does the cooking. The form doesn't cook — it just collects the order and passes it back.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">01</span>Highlight 1 — workflow_dispatch makes the manual button</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">clevertap-cordova/.github/workflows/native-release-sync.yml</span></div>
+  <pre>on:
+  workflow_dispatch:                  # <span class="marker">①</span> "show a 'Run workflow' button in the Actions tab"
+    inputs:
+      android_module:
+        description: 'Android module being bumped'
+        type: choice                  # <span class="marker">②</span> a DROPDOWN, not a free-text box
+        options: [none, core, pushtemplates, hms]
+        default: core
+      android_version:
+        description: 'New Android version (e.g. 8.3.0). Leave empty to skip Android.'
+        type: string                  # <span class="marker">③</span> free text
+        default: ''                   # <span class="marker">④</span> empty = skip this platform
+      ...
+      model:
+        description: 'Claude model (alias)'
+        type: choice
+        options: [sonnet, opus, haiku]
+        default: sonnet
+      skip_sync:
+        description: 'Skip Claude Sync + post-sync builds ...'
+        type: boolean                 # <span class="marker">⑤</span> a checkbox
+        default: false</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this declares</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>on: workflow_dispatch</code></td><td>&ldquo;This workflow is triggered <strong>by hand</strong> — it puts a <em>Run workflow</em> button in the GitHub Actions UI. No push or schedule starts it.&rdquo;</td></tr>
+<tr><td>②</td><td><code>type: choice</code> + <code>options:</code></td><td>&ldquo;Render a dropdown so the maintainer can only pick a valid module (<code>none/core/pushtemplates/hms</code>) — no typos.&rdquo;</td></tr>
+<tr><td>③</td><td><code>type: string</code></td><td>&ldquo;Version is free text (you type <code>8.3.0</code>).&rdquo;</td></tr>
+<tr><td>④</td><td><code>default: ''</code></td><td>&ldquo;Leaving it blank means <em>skip that platform</em> — the conductor treats empty as skip.&rdquo;</td></tr>
+<tr><td>⑤</td><td><code>type: boolean</code></td><td>&ldquo;Renders a checkbox; <code>skip_sync</code> lets you exercise the build pipeline without paying for Claude.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is workflow_dispatch?</div>
+  <p>It's the trigger that makes a workflow <strong>manually runnable</strong>. With it, the Actions tab shows a &ldquo;Run workflow&rdquo; button and a form built from the <code>inputs:</code> you declare. Contrast with <code>on: push</code> (runs on every push) or <code>on: schedule</code> (runs on a timer). Here a human decides <em>when</em> to sync and <em>what</em> versions, so a manual button is exactly right. See the <a href="glossary.html">Glossary</a>.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">02</span>Highlight 2 — the uses: call routes to the central conductor</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">yaml</span><span class="file">clevertap-cordova/.github/workflows/native-release-sync.yml</span></div>
+  <pre>jobs:
+  sync:
+    uses: CleverTap/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1   # <span class="marker">①</span>
+    with:
+      wrapper:         cordova                                                # <span class="marker">②</span>
+      android_module:  ${{ inputs.android_module != 'none' &amp;&amp; inputs.android_module || '' }}   # <span class="marker">③</span>
+      android_version: ${{ inputs.android_version }}
+      ...
+      skip_sync:       ${{ inputs.skip_sync }}
+    secrets:
+      app_id:            ${{ secrets.CLEVERTAP_WRAPPER_SYNC_APP_ID }}         # <span class="marker">④</span>
+      app_private_key:   ${{ secrets.CLEVERTAP_WRAPPER_SYNC_PRIVATE_KEY }}
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+      slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}</pre>
+</div>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>#</th><th>What this does</th><th>In plain English</th></tr></thead>
+  <tbody>
+<tr><td>①</td><td><code>uses: CleverTap/...sync.yml@v1</code></td><td>&ldquo;Call the <strong>reusable conductor</strong> in the tooling repo, pinned to the <code>v1</code> tag. This is the one line that hands off all the real work.&rdquo;</td></tr>
+<tr><td>②</td><td><code>wrapper: cordova</code></td><td>&ldquo;Tell the conductor <em>which</em> wrapper this is — it uses this to pick the Cordova build action, prompt, and tool allowlist.&rdquo;</td></tr>
+<tr><td>③</td><td><code>inputs.x != 'none' &amp;&amp; inputs.x || ''</code></td><td>&ldquo;A ternary trick: if the module isn't <code>none</code>, pass it through; otherwise pass empty string (= skip). Translates the friendly <code>none</code> dropdown option into the conductor's 'empty means skip' convention.&rdquo;</td></tr>
+<tr><td>④</td><td><code>secrets:</code> block</td><td>&ldquo;Forward the repo's secrets to the conductor by name. The App id + private key mint a token; the Anthropic key runs Claude; the Slack URL pings on failure.&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what does uses: …/sync.yml@v1 mean?</div>
+  <p><code>uses:</code> on a <em>job</em> (not a step) calls another workflow as a <strong>reusable workflow</strong> — the caller side of the <code>on: workflow_call</code> you saw in <a href="walk-sync-yml.html">sync.yml</a>. <code>@v1</code> pins which version (a git tag) to call, so an in-progress change to the tooling repo's <code>main</code> can't break every wrapper's sync without a deliberate re-tag. The <code>with:</code> maps to the conductor's <code>inputs:</code>; the <code>secrets:</code> maps to its <code>secrets:</code>.</p>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: the x != 'none' &amp;amp;&amp;amp; x || '' ternary</div>
+  <p>GitHub expressions have no <code>if</code>, so this is the idiom for one. <code>A &amp;&amp; B || C</code> evaluates to <strong>B when A is true, else C</strong>. So <code>android_module != 'none' &amp;&amp; android_module || ''</code> means &ldquo;if the dropdown isn't <code>none</code>, use the module name; otherwise use empty string.&rdquo; The form shows a friendly <code>none</code>; the conductor only understands &ldquo;empty = skip&rdquo; — this line bridges the two.</p>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is a GitHub App token (and why not a personal token)?</div>
+  <p>The header lists <code>CLEVERTAP_WRAPPER_SYNC_APP_ID</code> + <code>..._PRIVATE_KEY</code> — credentials for a <strong>GitHub App</strong> named <code>clevertap-wrapper-sync</code>. The conductor's Setup step exchanges them for a short-lived token used to push the branch and open the PR. An App token is preferred over a personal access token because it's scoped to just this automation, isn't tied to one person's account, and expires quickly — so the bot's commits and PRs are clearly attributable to the automation. See the <a href="glossary.html">Glossary</a>.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">✕</span>What it deliberately does NOT do</h2>
+<p>The file's own header says it best: <em>&ldquo;This is a thin wrapper: it collects the target versions and routes all the real work to the reusable workflow in the central tooling repo.&rdquo;</em> No checkout, no build, no Claude call lives here. Keeping the wrapper file tiny means every wrapper repo (cordova, react-native, flutter) has the same ~70-line form, and all the actual logic is maintained <strong>once</strong> in the tooling repo's <a href="walk-sync-yml.html">conductor</a>.</p>
+<div class="check-block">
+  <div class="check-head">Check yourself</div>
+<details class="qcard">
+  <summary>What does <code>on: workflow_dispatch</code> give you, and why is it the right trigger here?</summary>
+  <div class="answer">
+    <p>It adds a manual <strong>Run workflow</strong> button (and a form from the declared <code>inputs:</code>) in the Actions tab. It's right because a human decides when to sync and which versions — there's no push or schedule that should auto-trigger a native-SDK bump.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>What is the single line that does the real handoff, and what does <code>@v1</code> mean?</summary>
+  <div class="answer">
+    <p><code>uses: CleverTap/clevertap-wrapper-tooling/.github/workflows/sync.yml@v1</code>. It calls the reusable conductor; <code>@v1</code> pins it to the <code>v1</code> git tag so unreleased tooling changes can't silently break every wrapper's sync.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why <code>android_module != 'none' &amp;&amp; android_module || ''</code> instead of just passing the value?</summary>
+  <div class="answer">
+    <p>The form offers a friendly <code>none</code> option, but the conductor's convention is &ldquo;empty string = skip.&rdquo; This ternary translates <code>none</code> into <code>''</code> (and passes any real module through), bridging the UI to the conductor's contract.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why use a GitHub App's id + private key rather than a personal access token?</summary>
+  <div class="answer">
+    <p>The App token is scoped to just this automation, isn't tied to a single person's account, and is short-lived. Branch pushes and PRs are then clearly attributed to the <code>clevertap-wrapper-sync</code> bot rather than a human, and the blast radius if leaked is small.</p>
+  </div>
+</details>
+</div>
+</main>
+
+<footer class="kit-foot">
+  <a href="walk-orchestrator-prompt-cordova.html">&#9664; Reading the Prompt as a Program</a>
+  <a href="index.html">&#8962; Kit home</a>
+  <a href="runbook-01-prerequisites.html">Runbook — Prerequisites &#9654;</a>
+</footer>
+
+<script>
+
+  const config = {
+    fitPadding: 28,
+    minHeight: 360,
+    maxHeightPx: 1100,
+    maxHeightVh: 0.86,
+    maxInitialZoom: 1.8,
+    minZoom: 0.08,
+    maxZoom: 6.5,
+    zoomStep: 0.14,
+    readabilityFloor: 0.5
+  };
+
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  let activeDrag = null;
+  addEventListener('mousemove', (e) => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const pageBg = isDark ? '#0b1626' : '#eef2f7';
+
+
+  function initDiagram(shell) {
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if (!wrap || !viewport || !canvas || !source || !label) {
+      console.error('initDiagram: missing required elements in', shell);
+      return;
+    }
+
+    let zoom = 1, fitMode = 'contain', panX = 0, panY = 0, svgW = 0, svgH = 0;
+    let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+
+    function constrainPan() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const rW = svgW * zoom, rH = svgH * zoom, pad = config.fitPadding;
+      panX = (rW + pad * 2 <= vpW) ? (vpW - rW) / 2 : clamp(panX, vpW - rW - pad, pad);
+      panY = (rH + pad * 2 <= vpH) ? (vpH - rH) / 2 : clamp(panY, vpH - rH - pad, pad);
+    }
+    function applyTransform() {
+      const svg = canvas.querySelector('svg');
+      if (!svg || !svgW) return;
+      constrainPan();
+      svg.style.width = (svgW * zoom) + 'px';
+      svg.style.height = (svgH * zoom) + 'px';
+      canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom * 100) + '% — ' + fitMode;
+    }
+    function canPan() {
+      const rW = svgW * zoom, rH = svgH * zoom;
+      return rW + config.fitPadding * 2 > viewport.clientWidth
+          || rH + config.fitPadding * 2 > viewport.clientHeight;
+    }
+    function computeSmartFit() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const aW = Math.max(80, vpW - config.fitPadding * 2);
+      const aH = Math.max(80, vpH - config.fitPadding * 2);
+      const contain = Math.min(aW / svgW, aH / svgH);
+      let z = contain, mode = 'contain';
+      if (contain < config.readabilityFloor) {
+        const chartR = svgH / svgW, vpR = vpH / Math.max(vpW, 1);
+        if (chartR >= vpR) { z = aW / svgW; mode = 'width-priority'; }
+        else { z = aH / svgH; mode = 'height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram() {
+      if (!svgW) return;
+      const fit = computeSmartFit();
+      zoom = fit.zoom; fitMode = fit.mode;
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function setOneToOne() {
+      zoom = clamp(1, config.minZoom, config.maxZoom);
+      fitMode = '1:1';
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function zoomAround(factor, cx, cy) {
+      const next = clamp(zoom * factor, config.minZoom, config.maxZoom);
+      const ratio = next / zoom;
+      panX = cx - ratio * (cx - panX);
+      panY = cy - ratio * (cy - panY);
+      zoom = next; fitMode = 'custom';
+      applyTransform();
+    }
+    function readSvgNaturalSize(svg) {
+      let w = 0, h = 0;
+      if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
+      if (!w) { w = parseFloat(svg.getAttribute('width')) || 0; h = parseFloat(svg.getAttribute('height')) || 0; }
+      if (!w) { const b = svg.getBBox(); w = b.width; h = b.height; }
+      if (!w) { const r = svg.getBoundingClientRect(); w = r.width || 1000; h = r.height || 700; }
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight() {
+      if (!svgW) return;
+      const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+      const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
+      const maxVp = Math.floor(innerHeight * config.maxHeightVh);
+      const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight + 40, maxVp));
+      wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + 'px';
+    }
+    function openInNewTab() {
+      const svg = canvas.querySelector('svg');
+      if (!svg) return;
+      const clone = svg.cloneNode(true);
+      clone.style.width = ''; clone.style.height = '';
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Diagram</title><style>
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:${pageBg};padding:40px;box-sizing:border-box}
+      svg{max-width:100%;max-height:90vh;height:auto}
+      </style></head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    }
+    function render() {
+      const svgNode = canvas.querySelector('svg');
+      if (!svgNode) { label.textContent = 'Error: No diagram'; return; }
+      const size = readSvgNaturalSize(svgNode);
+      svgW = size.w; svgH = size.h;
+      svgNode.removeAttribute('width');
+      svgNode.removeAttribute('height');
+      svgNode.style.maxWidth = 'none';
+      svgNode.style.display = 'block';
+      setAdaptiveHeight();
+      fitDiagram();
+    }
+
+    const actions = {
+      'zoom-in': () => zoomAround(1 + config.zoomStep, viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-out': () => zoomAround(1 / (1 + config.zoomStep), viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-fit': fitDiagram,
+      'zoom-one': setOneToOne,
+      'zoom-expand': openInNewTab
+    };
+    Object.entries(actions).forEach(([action, handler]) => {
+      wrap.querySelector(`[data-action="${action}"]`)?.addEventListener('click', handler);
+    });
+
+    viewport.addEventListener('dblclick', fitDiagram);
+
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep);
+        zoomAround(factor, e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+      if (canPan()) {
+        e.preventDefault();
+        panX -= e.deltaX; panY -= e.deltaY;
+        applyTransform();
+      }
+    }, { passive: false });
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.zoom-controls') || !canPan()) return;
+      wrap.classList.add('is-panning');
+      sx = e.clientX; sy = e.clientY; spx = panX; spy = panY;
+      e.preventDefault();
+      activeDrag = {
+        onMove: (ev) => { panX = spx + (ev.clientX - sx); panY = spy + (ev.clientY - sy); applyTransform(); },
+        onEnd: () => { wrap.classList.remove('is-panning'); }
+      };
+    });
+
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx * dx + dy * dy);
+        const r = viewport.getBoundingClientRect();
+        touchCx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+        touchCy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      }
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && canPan()) {
+        if (touchDist > 0) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; touchDist = 0; }
+        e.preventDefault();
+        panX = spx + (e.touches[0].clientX - sx);
+        panY = spy + (e.touches[0].clientY - sy);
+        applyTransform();
+      } else if (e.touches.length === 2 && touchDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        zoomAround(d / touchDist, touchCx, touchCy);
+        touchDist = d;
+      }
+    }, { passive: false });
+
+    new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+
+    render();
+  }
+
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+</body>
+</html>

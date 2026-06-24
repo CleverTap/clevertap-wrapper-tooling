@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Troubleshooting — Failure Modes</title>
+<!--
+  Aesthetic: BLUEPRINT — technical-drawing feel, faint grid background,
+  deep slate/blue field with a gold accent, monospace labels, precise borders.
+  Font pairing: IBM Plex Sans + IBM Plex Mono. Light-first, dark variant via prefers-color-scheme.
+  Style block shared verbatim with system-overview.html, plus content-component styles.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.05s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ KIT NAV (top) ============ */
+  .kit-nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px clamp(20px, 5vw, 56px);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-nav a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    color: var(--text-dim);
+    margin: 0 auto 0 0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 10.5px;
+  }
+  .kit-nav .crumb b { color: var(--text); font-weight: 600; }
+
+  /* ============ CONTENT ============ */
+  .kit-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px clamp(20px, 5vw, 56px) 20px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+
+  h1 {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.07;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(19px, 2.2vw, 24px);
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    color: var(--text-bright);
+    margin: 48px 0 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 64px;
+  }
+  h2 .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+    margin-right: 10px;
+  }
+  h3 {
+    font-size: 16.5px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin: 28px 0 6px;
+  }
+
+  p { margin: 12px 0; color: var(--text); }
+  .kit-content > p, .callout p, li { color: var(--text); }
+  .lead {
+    font-size: clamp(15.5px, 1vw + 12px, 18px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  ul, ol { margin: 12px 0 12px 24px; }
+  li { margin: 6px 0; }
+
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--text); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ============ CODE BLOCK CARD ============ */
+  .code-card {
+    margin: 18px 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+  }
+  .code-card__label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 7px 14px;
+  }
+  .code-card pre {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+  .code-card pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* ============ CALLOUTS ============ */
+  .callout {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 9px 9px 0;
+    background: var(--cbg, var(--blue-dim));
+    padding: 14px 18px;
+  }
+  .callout__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .callout__label::before {
+    content: ''; width: 8px; height: 8px; border-radius: 2px;
+    background: var(--c, var(--blue));
+  }
+  .callout p { font-size: 14px; margin: 6px 0; }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--note  { --c: var(--gold);  --cbg: var(--gold-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ============ DATA TABLE ============ */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface2);
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text); }
+  tbody tr:nth-child(even) { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ============ DETAILS (Check yourself / FAQ) ============ */
+  details.qa {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  details.qa[open] { border-color: var(--border-bright); }
+  details.qa > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 44px 13px 16px;
+    position: relative;
+    font-weight: 600;
+    color: var(--text-bright);
+    font-size: 14.5px;
+  }
+  details.qa > summary::-webkit-details-marker { display: none; }
+  details.qa > summary::after {
+    content: '+';
+    position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 18px; line-height: 1;
+    color: var(--gold);
+    transition: transform 0.2s;
+  }
+  details.qa[open] > summary::after { content: '\2212'; }
+  details.qa > summary:hover { background: var(--surface2); }
+  details.qa .qa-body {
+    padding: 2px 16px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-size: 14px;
+  }
+  details.qa .qa-body p:first-child { margin-top: 12px; }
+
+  .check-head {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--green);
+    margin: 40px 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .check-head::before { content: ''; width: 22px; height: 1px; background: var(--green); }
+
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+
+  /* ============ FOOTER NAV ============ */
+  .kit-foot {
+    max-width: 860px;
+    margin: 40px auto 0;
+    padding: 20px clamp(20px, 5vw, 56px) 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .kit-foot a { text-decoration: none; color: var(--accent); }
+  .kit-foot a:hover { color: var(--text-bright); }
+  .kit-foot a.home { color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">Troubleshooting · <b>Failure Modes</b></span>
+  <a href="trouble-02-when-claude-misses-an-api.html">Next: Missed API &#9654;</a>
+</nav>
+
+<main class="kit-content">
+  <div class="eyebrow animate">Troubleshooting · 01</div>
+  <h1 class="animate" style="--i:1">Failure modes — symptom &rarr; cause &rarr; fix</h1>
+  <p class="lead animate" style="--i:2">
+    Things break. This page is the map of the <em>common</em> breakages, each as
+    <strong>symptom &rarr; cause &rarr; fix</strong>. Most aren't real emergencies &mdash; several are by design.
+  </p>
+  <p class="animate" style="--i:3">
+    For a quick read of <em>where</em> in the run a failure happened, keep
+    <a href="runbook-03-read-the-run.html">03 — read the run</a> handy.
+  </p>
+
+  <h2><span class="sec-num">1</span>The run aborts at the pre-sync build gate</h2>
+  <p><strong>Symptom:</strong> the run stops early, at "Pre-sync build." No Sync steps ran. No PR. Cost is $0.</p>
+  <p><strong>Cause:</strong> the example app was <strong>already broken</strong> on <code>base_ref</code>, <em>before</em>
+     any AI changes. The pre-sync gate exists exactly to catch this and fail fast.</p>
+  <p><strong>Fix:</strong> this isn't a sync problem &mdash; it's a build-pipeline problem. Fix the build first:</p>
+  <ul>
+    <li>Iterate with <strong><code>skip_sync=true</code></strong> so each attempt costs $0 AI (see
+        <a href="runbook-05-dry-run-and-skip-sync.html">05 — dry-run and skip-sync</a>).</li>
+    <li>Common culprits seen before: a missing <code>google-services.json</code> (the Google Services plugin needs it
+        even without Firebase &mdash; CI writes a stub), a stale lockfile fighting a strict install, or a
+        toolchain/SDK-level drift.</li>
+  </ul>
+  <div class="callout callout--note">
+    <div class="callout__label">Analogy</div>
+    <p>The gate is a <strong>smoke detector that won't let you start cooking</strong> if the kitchen's already on fire.
+       Annoying, but it saved you the cost of a doomed AI run.</p>
+  </div>
+
+  <h2><span class="sec-num">2</span>The PR opened with a <code>build-failed</code> label</h2>
+  <p><strong>Symptom:</strong> a PR exists, but it carries a <strong><code>build-failed</code></strong> label and a
+     warning banner. The run is marked failed and Slack may have pinged.</p>
+  <p><strong>Cause:</strong> the <strong>post-sync</strong> build failed &mdash; Claude's edits didn't compile. By design
+     ("Option A") the PR opens anyway rather than throwing the work away.</p>
+  <p><strong>Fix:</strong> this is <strong>non-fatal and expected sometimes</strong>. A human:</p>
+  <ol>
+    <li>pulls the branch locally,</li>
+    <li>fixes the compile error,</li>
+    <li>pushes — the PR updates,</li>
+    <li>then reviews and merges as normal.</li>
+  </ol>
+  <p>A classic example: an edit that referenced a native method/selector that doesn't actually exist (see
+     <a href="trouble-02-when-claude-misses-an-api.html">02 — when Claude misses an API</a> and
+     <a href="trouble-03-source-verification-failures.html">03 — source verification failures</a>).</p>
+
+  <h2><span class="sec-num">3</span>A no-op commit / "nothing happened"</h2>
+  <p><strong>Symptom:</strong> the Sync step ran and succeeded, but there's no meaningful diff &mdash; or no PR worth
+     opening.</p>
+  <p><strong>Cause:</strong> you asked to sync to a version <strong>already pinned</strong> in the wrapper. Claude
+     correctly detects there's no work to do and exits cleanly. This is <em>correct behavior</em>, not a bug.</p>
+  <p><strong>Fix:</strong> pick a target version that actually <strong>differs</strong> from the current pin. To see the
+     full pipeline, sync forward to a genuinely newer version (or use a rolled-back
+     <a href="runbook-05-dry-run-and-skip-sync.html"><code>base_ref</code> baseline</a>).</p>
+
+  <h2><span class="sec-num">4</span>The run failed at setup (no PR, often a Slack ping)</h2>
+  <p><strong>Symptom:</strong> the run dies in the <strong>Setup</strong> step, before any build or sync. Often the
+     token-minting sub-step is red.</p>
+  <p><strong>Causes &amp; fixes:</strong></p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Cause</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>App private key newlines mangled</strong> &rarr; <code>Invalid keyData</code>.</td>
+          <td>Re-paste the <code>.pem</code> with exact bytes (<code>cat key.pem | pbcopy</code>); verify the key is valid before saving the secret.</td>
+        </tr>
+        <tr>
+          <td><strong>GitHub App not installed</strong> on the target repo (or fork).</td>
+          <td>Install <code>clevertap-wrapper-sync</code> on that repo with access to it.</td>
+        </tr>
+        <tr>
+          <td><strong>A required secret is missing.</strong></td>
+          <td>Confirm all four secrets exist (Settings &rarr; Secrets &rarr; Actions). The Slack one is optional &mdash; the script skips gracefully when empty.</td>
+        </tr>
+        <tr>
+          <td><strong>Branch already exists</strong> (<code>task/release_&lt;name&gt;</code>) from a prior failed run.</td>
+          <td>Re-run with a unique <strong><code>release_name</code></strong>.</td>
+        </tr>
+        <tr>
+          <td><strong><code>uses:</code> points at a stale/wrong hub location.</strong></td>
+          <td>The dispatch's <code>uses:</code> must point at the current hub path + tag (e.g. <code>@v1</code>); note <code>uses:</code> does <strong>not</strong> follow org redirects.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout callout--info">
+    <div class="callout__label">Beginner sidebar · token minting</div>
+    <p>The first thing setup does is ask the GitHub App for a short-lived <strong>token</strong>. If the App isn't
+       installed or its key is malformed, this fails immediately and nothing else can run. See
+       <a href="glossary.html">Glossary &rarr; GitHub App / Token</a>.</p>
+  </div>
+
+  <h2><span class="sec-num">&#42;</span>Quick triage table</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>What you see</th><th>Most likely</th><th>Where to go</th></tr></thead>
+      <tbody>
+        <tr><td>Stopped at pre-sync build, $0 cost</td><td>Build broken before any sync</td><td>This page §1; <a href="runbook-05-dry-run-and-skip-sync.html">skip-sync</a></td></tr>
+        <tr><td>PR with <code>build-failed</code> label</td><td>Claude's edits didn't compile</td><td>This page §2; <a href="trouble-03-source-verification-failures.html">source verification</a></td></tr>
+        <tr><td>Sync ran but no real change</td><td>Synced to the already-pinned version</td><td>This page §3</td></tr>
+        <tr><td>Died in Setup / Slack ping, no PR</td><td>Token/App/secret/branch issue</td><td>This page §4</td></tr>
+        <tr><td>A changelog method seems missing</td><td>Diff regex miss / unconfirmed</td><td><a href="trouble-02-when-claude-misses-an-api.html">02 — when Claude misses an API</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="check-head">Check yourself</div>
+
+  <details class="qa">
+    <summary>1. The run stopped at pre-sync build with $0 cost. Is this a sync bug?</summary>
+    <div class="qa-body">
+      <p>No — it's the <strong>build pipeline</strong> that was already broken on <code>base_ref</code>. The pre-sync
+         gate fails fast to avoid paying for AI on a doomed run. Fix the build (iterate with
+         <code>skip_sync=true</code>), then retry.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>2. A PR opened with a <code>build-failed</code> label. Emergency?</summary>
+    <div class="qa-body">
+      <p>No — it's the expected "Option A" behavior. Claude's edits didn't compile, so the PR opens anyway for a human
+         to pull, fix, push, and merge. Nothing was lost.</p>
+    </div>
+  </details>
+
+  <details class="qa">
+    <summary>3. Setup failed with <code>Invalid keyData</code>. What's the cause?</summary>
+    <div class="qa-body">
+      <p>The GitHub App <strong>private key's newlines were mangled</strong> when pasted into the secret. Re-paste the
+         exact <code>.pem</code> bytes and verify the key before saving.</p>
+    </div>
+  </details>
+</main>
+
+<footer class="kit-foot">
+  <a href="runbook-05-dry-run-and-skip-sync.html">&#9664; Runbook — Dry Run &amp; skip_sync</a>
+  <a class="home" href="index.html">&#8962; Kit home</a>
+  <a href="trouble-02-when-claude-misses-an-api.html">Troubleshooting — Missed API &#9654;</a>
+</footer>
+
+</body>
+</html>

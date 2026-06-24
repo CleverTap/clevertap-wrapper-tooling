@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading the Prompt as a Program — CleverTap Wrapper-Sync Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME — BLUEPRINT (light-first) ============ */
+  :root {
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #eef2f7;
+    --grid-line: rgba(30, 58, 95, 0.06);
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface2: #f4f7fb;
+    --border: rgba(30, 58, 95, 0.14);
+    --border-bright: rgba(30, 58, 95, 0.26);
+    --text: #16263d;
+    --text-dim: #5a6e88;
+    --text-bright: #0d1929;
+
+    /* accents: deep blue + gold, with semantic supporting tones */
+    --blue: #1e3a5f;
+    --blue-dim: rgba(30, 58, 95, 0.10);
+    --gold: #b8860b;
+    --gold-dim: rgba(184, 134, 11, 0.12);
+    --teal: #0e7490;
+    --teal-dim: rgba(14, 116, 144, 0.10);
+    --amber: #b45309;
+    --amber-dim: rgba(180, 83, 9, 0.10);
+    --rose: #9f1239;
+    --rose-dim: rgba(159, 18, 57, 0.10);
+    --green: #15803d;
+    --green-dim: rgba(21, 128, 61, 0.10);
+
+    --accent: var(--blue);
+    --accent-dim: var(--blue-dim);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1626;
+      --grid-line: rgba(120, 160, 210, 0.07);
+      --surface: #11203a;
+      --surface-elevated: #16294a;
+      --surface2: #0f1d33;
+      --border: rgba(140, 175, 220, 0.16);
+      --border-bright: rgba(140, 175, 220, 0.30);
+      --text: #d6e2f2;
+      --text-dim: #8aa0bf;
+      --text-bright: #f0f5fc;
+
+      --blue: #6ea8df;
+      --blue-dim: rgba(110, 168, 223, 0.16);
+      --gold: #e2b552;
+      --gold-dim: rgba(226, 181, 82, 0.16);
+      --teal: #38bdf8;
+      --teal-dim: rgba(56, 189, 248, 0.14);
+      --amber: #f0a868;
+      --amber-dim: rgba(240, 168, 104, 0.14);
+      --rose: #f0728f;
+      --rose-dim: rgba(240, 114, 143, 0.14);
+      --green: #5fd08a;
+      --green-dim: rgba(95, 208, 138, 0.14);
+
+      --accent: var(--gold);
+      --accent-dim: var(--gold-dim);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  .grid > *, .flex > * { min-width: 0; }
+
+  body {
+    background-color: var(--bg);
+    /* blueprint grid: fine lines + heavier major lines */
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px;
+    color: var(--text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--text-bright); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ LAYOUT (TOC + main) ============ */
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 44px;
+  }
+  .main { min-width: 0; }
+
+  /* ---- TOC ---- */
+  .toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    grid-row: 1 / -1;
+    padding: 16px 0;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+  }
+  .toc::-webkit-scrollbar { width: 3px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+  .toc-mark {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .toc-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 0 0 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc a {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.35;
+    margin-bottom: 1px;
+  }
+  .toc a:hover { color: var(--text); background: var(--surface2); }
+  .toc a.active { color: var(--text-bright); border-left-color: var(--gold); background: var(--surface2); }
+
+  /* ============ HERO ============ */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 22px;
+    height: 1px;
+    background: var(--gold);
+  }
+  h1 {
+    font-size: clamp(30px, 4.4vw, 50px);
+    font-weight: 700;
+    letter-spacing: -1.2px;
+    line-height: 1.04;
+    color: var(--text-bright);
+    margin-bottom: 18px;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: clamp(16px, 1.1vw + 12px, 19px);
+    line-height: 1.65;
+    color: var(--text-dim);
+    max-width: 70ch;
+    margin-bottom: 12px;
+  }
+  .lead strong { color: var(--text); font-weight: 600; }
+  .lead code, .caption code, .terms code, .ve-card code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--blue-dim);
+    color: var(--blue);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .chip::before {
+    content: '';
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--c, var(--gold));
+  }
+
+  /* ============ SECTION HEADS ============ */
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin: 56px 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 24px;
+  }
+  .sec-head__num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    border: 1px solid var(--border-bright);
+    border-radius: 5px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .sec-head__title {
+    font-size: clamp(20px, 2.4vw, 27px);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-bright);
+  }
+  .sec-intro {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    max-width: 74ch;
+    margin: 14px 0 22px;
+  }
+
+  /* ============ MERMAID CONTAINER (from template) ============ */
+  .diagram-shell { position: relative; }
+  .diagram-shell__hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    opacity: 0.75;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .diagram-shell__hint::before {
+    content: '⌖';
+    color: var(--gold);
+    font-size: 13px;
+  }
+
+  .mermaid-wrap {
+    position: relative;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--surface);
+    background-size: 22px 22px, 22px 22px, auto;
+    border: 1px solid var(--border-bright);
+    border-radius: 10px;
+    padding: 32px 24px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    box-shadow: 0 1px 3px rgba(13, 25, 41, 0.05);
+    cursor: grab;
+  }
+  .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
+
+  .zoom-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 2px;
+    z-index: 10;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 2px;
+    box-shadow: 0 1px 4px rgba(13, 25, 41, 0.08);
+  }
+  .zoom-controls button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .zoom-controls button:hover { background: var(--surface2); color: var(--gold); }
+
+  .mermaid-viewport {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+  }
+  .mermaid-canvas { position: absolute; top: 0; left: 0; }
+  .zoom-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 0 6px;
+    align-self: center;
+    white-space: nowrap;
+  }
+
+  /* ============ MERMAID SVG OVERRIDES ============ */
+  .mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 16px !important; }
+  .mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; font-family: var(--font-mono) !important; font-size: 12.5px !important; }
+  .mermaid .edgeLabel rect, .mermaid .edgeLabel foreignObject { fill: var(--surface) !important; }
+  .mermaid .cluster rect { stroke-width: 1.25px !important; }
+  .mermaid .node rect, .mermaid .node circle, .mermaid .node polygon, .mermaid .node path { stroke-width: 1.5px !important; }
+  .mermaid .edge-pattern-solid { stroke-width: 1.5px !important; }
+  /* sequence diagram */
+  .mermaid .actor { stroke-width: 1.5px !important; }
+  .mermaid text.actor, .mermaid .actor > tspan { font-family: var(--font-body) !important; }
+  .mermaid .messageText { font-family: var(--font-mono) !important; font-size: 12px !important; fill: var(--text) !important; }
+  .mermaid .loopText, .mermaid .loopText tspan { font-family: var(--font-mono) !important; fill: var(--text-dim) !important; }
+  .mermaid .noteText { font-family: var(--font-body) !important; }
+
+  /* ============ CAPTION ============ */
+  .caption {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-dim);
+    margin-top: 16px;
+  }
+  .caption strong { color: var(--text); font-weight: 600; }
+
+  /* ============ ONION LEGEND ============ */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border-bright); }
+
+  /* ============ KEY TERMS ============ */
+  .terms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .term {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 15px 17px;
+    position: relative;
+  }
+  .term--hero {
+    background: color-mix(in srgb, var(--surface) 90%, var(--gold) 10%);
+    border-color: color-mix(in srgb, var(--border) 40%, var(--gold) 60%);
+    box-shadow: 0 3px 14px rgba(13, 25, 41, 0.07);
+    grid-column: 1 / -1;
+  }
+  .term__label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--c, var(--blue));
+    margin-bottom: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .term__label::before {
+    content: '';
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+  }
+  .term p { font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+  .term p strong { color: var(--text); font-weight: 600; }
+
+  .pullquote {
+    margin: 28px 0 8px;
+    padding: 4px 0 4px 22px;
+    border-left: 3px solid var(--gold);
+  }
+  .pullquote p {
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.4;
+    color: var(--text-bright);
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1000px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 0 20px 28px; }
+    .toc {
+      position: sticky; top: 0; z-index: 200;
+      grid-row: auto; max-height: none;
+      display: flex; gap: 4px; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      margin: 0 -20px 4px;
+    }
+    .toc::-webkit-scrollbar { display: none; }
+    .toc-title, .toc-mark { display: none; }
+    .toc a {
+      white-space: nowrap; flex-shrink: 0;
+      border-left: none; border-bottom: 2px solid transparent;
+      border-radius: 4px 4px 0 0; padding: 6px 10px; font-size: 10.5px;
+    }
+    .toc a.active { border-left: none; border-bottom-color: var(--gold); }
+    .main { padding-top: 22px; }
+    .sec-head { scroll-margin-top: 54px; }
+  }
+  @media (max-width: 600px) {
+    h1 { letter-spacing: -0.5px; }
+    .mermaid-wrap { padding: 16px 10px; }
+  }
+</style>
+
+<style>
+  /* ====== KIT PAGE CHROME (content pages) ====== */
+  .kit-nav, .kit-foot {
+    max-width: 1000px; margin: 0 auto; display: flex;
+    align-items: center; justify-content: space-between; gap: 16px;
+    font-family: var(--font-mono); font-size: 12px;
+  }
+  .kit-nav {
+    padding: 18px 40px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .kit-nav a, .kit-foot a { text-decoration: none; color: var(--accent); white-space: nowrap; }
+  .kit-nav a:hover, .kit-foot a:hover { color: var(--text-bright); }
+  .kit-nav .crumb {
+    flex: 1; text-align: center; color: var(--text-dim);
+    letter-spacing: 1.5px; text-transform: uppercase; font-size: 10.5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .kit-foot {
+    margin-top: 64px; padding: 24px 40px 48px; border-top: 1px solid var(--border);
+  }
+  .kit-content {
+    max-width: 1000px; margin: 0 auto; padding: 36px 40px 0;
+  }
+  .kit-content > * { animation: fadeUp 0.45s ease-out both; }
+
+  .page-eyebrow {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  }
+  .page-eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  .kit-content h1 { margin-bottom: 20px; }
+
+  .kit-content h2 {
+    font-size: clamp(19px, 2.2vw, 25px); font-weight: 600; letter-spacing: -0.5px;
+    color: var(--text-bright); margin: 48px 0 8px; padding-bottom: 11px;
+    border-bottom: 1px solid var(--border); scroll-margin-top: 80px;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .kit-content h2 .h2-mark {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--gold);
+    border: 1px solid var(--border-bright); border-radius: 5px; padding: 2px 8px; flex-shrink: 0;
+  }
+  .kit-content h3 {
+    font-size: 16.5px; font-weight: 600; color: var(--text-bright); margin: 28px 0 6px;
+  }
+  .kit-content p { font-size: 15px; line-height: 1.7; color: var(--text); margin: 12px 0; }
+  .kit-content p.muted { color: var(--text-dim); }
+  .kit-content ul, .kit-content ol { margin: 12px 0 12px 22px; }
+  .kit-content li { font-size: 15px; line-height: 1.7; color: var(--text); margin: 5px 0; }
+  .kit-content strong { color: var(--text-bright); font-weight: 600; }
+  .kit-content em { font-style: italic; }
+  .kit-content a { color: var(--accent); }
+  .kit-content code {
+    font-family: var(--font-mono); font-size: 0.84em; background: var(--blue-dim);
+    color: var(--blue); padding: 1px 5px; border-radius: 3px;
+  }
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+
+  /* ====== CODE CARD ====== */
+  .code-card {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: 9px; margin: 18px 0; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(13,25,41,0.05);
+  }
+  .code-card__head {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  }
+  .code-card__head .lang {
+    color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .code-card__head .file { color: var(--text); }
+  .code-card pre {
+    margin: 0; padding: 16px 18px; overflow-x: auto;
+    font-family: var(--font-mono); font-size: 12.8px; line-height: 1.65;
+    color: var(--text); white-space: pre-wrap; word-break: break-word;
+  }
+  .code-card pre .marker { color: var(--gold); font-weight: 600; }
+
+  /* ====== CALLOUTS ====== */
+  .callout {
+    border: 1px solid var(--border); border-left: 3px solid var(--c, var(--blue));
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 18px 0;
+    background: var(--cbg, var(--surface));
+  }
+  .callout__label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--c, var(--blue));
+    margin-bottom: 7px; display: flex; align-items: center; gap: 7px;
+  }
+  .callout__label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .callout p { margin: 6px 0; font-size: 14px; line-height: 1.65; color: var(--text); }
+  .callout p:first-of-type { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout--info  { --c: var(--blue);  --cbg: var(--blue-dim); }
+  .callout--amber { --c: var(--amber); --cbg: var(--amber-dim); }
+  .callout--warn  { --c: var(--rose);  --cbg: var(--rose-dim); }
+
+  /* ====== DATA TABLE ====== */
+  .data-table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--border); border-radius: 9px; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.data-table th, table.data-table td {
+    text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.6;
+  }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--surface2); color: var(--text-bright);
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; font-weight: 600; z-index: 1;
+  }
+  table.data-table tbody tr:nth-child(odd) { background: var(--surface); }
+  table.data-table tbody tr:nth-child(even) { background: var(--surface2); }
+  table.data-table tbody tr:hover { background: var(--blue-dim); }
+  table.data-table td.num { text-align: right; font-family: var(--font-mono); color: var(--gold); }
+  table.data-table code { background: var(--blue-dim); }
+
+  /* ====== DETAILS (Check yourself) ====== */
+  .check-block { margin: 20px 0; }
+  .check-block .check-head {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--gold);
+    display: flex; align-items: center; gap: 8px; margin: 26px 0 12px;
+  }
+  .check-block .check-head::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+  details.qcard {
+    border: 1px solid var(--border); border-radius: 9px; margin: 10px 0;
+    background: var(--surface); overflow: hidden;
+  }
+  details.qcard[open] { border-color: var(--border-bright); }
+  details.qcard summary {
+    cursor: pointer; list-style: none; padding: 13px 16px; font-size: 14.5px;
+    font-weight: 500; color: var(--text-bright); display: flex; gap: 10px; align-items: flex-start;
+  }
+  details.qcard summary::-webkit-details-marker { display: none; }
+  details.qcard summary::before {
+    content: 'Q'; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--gold); border: 1px solid var(--border-bright); border-radius: 4px;
+    padding: 1px 6px; flex-shrink: 0; margin-top: 1px;
+  }
+  details.qcard[open] summary { border-bottom: 1px solid var(--border); background: var(--surface2); }
+  details.qcard .answer { padding: 14px 16px 16px; font-size: 14px; line-height: 1.7; color: var(--text); }
+  details.qcard .answer p { margin: 0 0 8px; }
+  details.qcard .answer p:last-child { margin-bottom: 0; }
+
+  @media (max-width: 700px) {
+    .kit-nav, .kit-foot, .kit-content { padding-left: 20px; padding-right: 20px; }
+    .kit-nav .crumb { display: none; }
+  }
+</style>
+
+</head>
+<body>
+<nav class="kit-nav">
+  <a href="index.html">&#9664; Onboarding Kit</a>
+  <span class="crumb">WALKTHROUGHS · READING THE PROMPT AS A PROGRAM</span>
+  <a href="walk-wrapper-dispatch.html">Next: The Trigger Form &#9654;</a>
+</nav>
+
+<main class="kit-content">
+<div class="page-eyebrow">walkthroughs · the prompt as a program</div>
+<h1><code>sync-orchestrator-cordova.md</code> — reading a prompt as a program</h1>
+<div class="callout callout--info">
+  <div class="callout__label">In one sentence</div>
+  <p>This Markdown file is not documentation — it is the <strong>program</strong> Claude executes headless; its sections are the &ldquo;steps,&rdquo; its constraints are the &ldquo;guardrails,&rdquo; and its output schema is the &ldquo;return value.&rdquo;</p>
+  <p><strong>File:</strong> <code>prompts/sync-orchestrator-cordova.md</code>. Rendered with <code>envsubst</code> and handed to <code>claude -p</code> by the <a href="walk-claude-sync-action.html">claude-sync action</a>.</p>
+</div>
+<p>A normal program is written in Python or shell. <em>This</em> program is written in English — but it still has inputs, branches, loops, a verification gate, and a return value. Learning to read a prompt this way is the key skill. We annotate the <strong>key sections</strong>, not every line, because the prose is the content.</p>
+<h2><span class="h2-mark">◎</span>The shape (read this first)</h2>
+<section class="diagram-shell">
+  <p class="diagram-shell__hint">Ctrl/Cmd + wheel to zoom &middot; drag to pan &middot; double-click to fit &middot; &#9215; opens full size</p>
+  <div class="mermaid-wrap">
+    <div class="zoom-controls">
+      <button type="button" data-action="zoom-in" title="Zoom in">+</button>
+      <button type="button" data-action="zoom-out" title="Zoom out">&minus;</button>
+      <button type="button" data-action="zoom-fit" title="Smart fit">&#8634;</button>
+      <button type="button" data-action="zoom-one" title="1:1 zoom">1:1</button>
+      <button type="button" data-action="zoom-expand" title="Open full size">&#x26F6;</button>
+      <span class="zoom-label">Loading&hellip;</span>
+    </div>
+    <div class="mermaid-viewport"><div class="mermaid mermaid-canvas"><style>foreignObject div { overflow: visible !important; }</style><svg id="mermaid-1781628180071" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 586px;" viewBox="0 0 586 1553.640625" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#mermaid-1781628180071{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#mermaid-1781628180071 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#mermaid-1781628180071 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#mermaid-1781628180071 .error-icon{fill:#552222;}#mermaid-1781628180071 .error-text{fill:#552222;stroke:#552222;}#mermaid-1781628180071 .edge-thickness-normal{stroke-width:1px;}#mermaid-1781628180071 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1781628180071 .edge-pattern-solid{stroke-dasharray:0;}#mermaid-1781628180071 .edge-thickness-invisible{stroke-width:0;fill:none;}#mermaid-1781628180071 .edge-pattern-dashed{stroke-dasharray:3;}#mermaid-1781628180071 .edge-pattern-dotted{stroke-dasharray:2;}#mermaid-1781628180071 .marker{fill:#333333;stroke:#333333;}#mermaid-1781628180071 .marker.cross{stroke:#333333;}#mermaid-1781628180071 svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mermaid-1781628180071 p{margin:0;}#mermaid-1781628180071 .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1781628180071 .cluster-label text{fill:#333;}#mermaid-1781628180071 .cluster-label span{color:#333;}#mermaid-1781628180071 .cluster-label span p{background-color:transparent;}#mermaid-1781628180071 .label text,#mermaid-1781628180071 span{fill:#333;color:#333;}#mermaid-1781628180071 .node rect,#mermaid-1781628180071 .node circle,#mermaid-1781628180071 .node ellipse,#mermaid-1781628180071 .node polygon,#mermaid-1781628180071 .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#mermaid-1781628180071 .rough-node .label text,#mermaid-1781628180071 .node .label text,#mermaid-1781628180071 .image-shape .label,#mermaid-1781628180071 .icon-shape .label{text-anchor:middle;}#mermaid-1781628180071 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#mermaid-1781628180071 .rough-node .label,#mermaid-1781628180071 .node .label,#mermaid-1781628180071 .image-shape .label,#mermaid-1781628180071 .icon-shape .label{text-align:center;}#mermaid-1781628180071 .node.clickable{cursor:pointer;}#mermaid-1781628180071 .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#mermaid-1781628180071 .arrowheadPath{fill:#333333;}#mermaid-1781628180071 .edgePath .path{stroke:#333333;stroke-width:2.0px;}#mermaid-1781628180071 .flowchart-link{stroke:#333333;fill:none;}#mermaid-1781628180071 .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628180071 .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#mermaid-1781628180071 .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628180071 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-1781628180071 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid-1781628180071 .cluster text{fill:#333;}#mermaid-1781628180071 .cluster span{color:#333;}#mermaid-1781628180071 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#mermaid-1781628180071 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#mermaid-1781628180071 rect.text{fill:none;stroke-width:0;}#mermaid-1781628180071 .icon-shape,#mermaid-1781628180071 .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#mermaid-1781628180071 .icon-shape p,#mermaid-1781628180071 .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#mermaid-1781628180071 .icon-shape .label rect,#mermaid-1781628180071 .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#mermaid-1781628180071 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#mermaid-1781628180071 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#mermaid-1781628180071 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="mermaid-1781628180071_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628180071_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628180071_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628180071_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"></circle></marker><marker id="mermaid-1781628180071_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><marker id="mermaid-1781628180071_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"></path></marker><g class="root"><g class="clusters"></g><g class="edgePaths"><path d="M293,158L293,162.167C293,166.333,293,174.667,293,182.333C293,190,293,197,293,200.5L293,204" id="L_IN_S1_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_IN_S1_0" data-points="W3sieCI6MjkzLCJ5IjoxNTh9LHsieCI6MjkzLCJ5IjoxODN9LHsieCI6MjkzLCJ5IjoyMDh9XQ==" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M293,286L293,290.167C293,294.333,293,302.667,293,310.333C293,318,293,325,293,328.5L293,332" id="L_S1_S2_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S1_S2_0" data-points="W3sieCI6MjkzLCJ5IjoyODZ9LHsieCI6MjkzLCJ5IjozMTF9LHsieCI6MjkzLCJ5IjozMzZ9XQ==" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M198.547,414L188.456,418.167C178.365,422.333,158.182,430.667,148.091,442.333C138,454,138,469,138,476.5L138,484" id="L_S2_S3a_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S2_S3a_0" data-points="W3sieCI6MTk4LjU0Njg3NSwieSI6NDE0fSx7IngiOjEzOCwieSI6NDM5fSx7IngiOjEzOCwieSI6NDg4fV0=" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M387.453,414L397.544,418.167C407.635,422.333,427.818,430.667,437.909,438.333C448,446,448,453,448,456.5L448,460" id="L_S2_S3b_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S2_S3b_0" data-points="W3sieCI6Mzg3LjQ1MzEyNSwieSI6NDE0fSx7IngiOjQ0OCwieSI6NDM5fSx7IngiOjQ0OCwieSI6NDY0fV0=" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M138,566L138,574.167C138,582.333,138,598.667,145.899,610.707C153.798,622.746,169.597,630.493,177.496,634.366L185.395,638.239" id="L_S3a_S4_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S3a_S4_0" data-points="W3sieCI6MTM4LCJ5Ijo1NjZ9LHsieCI6MTM4LCJ5Ijo2MTV9LHsieCI6MTg4Ljk4Njg0MjEwNTI2MzE4LCJ5Ijo2NDB9XQ==" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M448,590L448,594.167C448,598.333,448,606.667,440.101,614.707C432.202,622.746,416.403,630.493,408.504,634.366L400.605,638.239" id="L_S3b_S4_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S3b_S4_0" data-points="W3sieCI6NDQ4LCJ5Ijo1OTB9LHsieCI6NDQ4LCJ5Ijo2MTV9LHsieCI6Mzk3LjAxMzE1Nzg5NDczNjgsInkiOjY0MH1d" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M235.832,742L231.162,746.167C226.491,750.333,217.15,758.667,212.479,766.333C207.809,774,207.809,781,207.809,784.5L207.809,788" id="L_S4_S4b_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S4_S4b_0" data-points="W3sieCI6MjM1LjgzMjA4MjY0ODAyNjMsInkiOjc0Mn0seyJ4IjoyMDcuODA4NTkzNzUsInkiOjc2N30seyJ4IjoyMDcuODA4NTkzNzUsInkiOjc5Mn1d" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M207.809,870L207.809,874.167C207.809,878.333,207.809,886.667,207.809,894.333C207.809,902,207.809,909,207.809,912.5L207.809,916" id="L_S4b_S6_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S4b_S6_0" data-points="W3sieCI6MjA3LjgwODU5Mzc1LCJ5Ijo4NzB9LHsieCI6MjA3LjgwODU5Mzc1LCJ5Ijo4OTV9LHsieCI6MjA3LjgwODU5Mzc1LCJ5Ijo5MjB9XQ==" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M207.809,974L207.809,978.167C207.809,982.333,207.809,990.667,207.809,998.333C207.809,1006,207.809,1013,207.809,1016.5L207.809,1020" id="L_S6_S7_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S6_S7_0" data-points="W3sieCI6MjA3LjgwODU5Mzc1LCJ5Ijo5NzR9LHsieCI6MjA3LjgwODU5Mzc1LCJ5Ijo5OTl9LHsieCI6MjA3LjgwODU5Mzc1LCJ5IjoxMDI0fV0=" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M207.809,1078L207.809,1082.167C207.809,1086.333,207.809,1094.667,213.93,1110.174C220.052,1125.681,232.295,1148.361,238.416,1159.702L244.538,1171.042" id="L_S7_GATE_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_S7_GATE_0" data-points="W3sieCI6MjA3LjgwODU5Mzc1LCJ5IjoxMDc4fSx7IngiOjIwNy44MDg1OTM3NSwieSI6MTEwM30seyJ4IjoyNDYuNDM3ODQ1NDcyNDY0NywieSI6MTE3NC41NjIxNTQ1Mjc1MzUzfV0=" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M339.562,1174.562L346,1162.635C352.439,1150.708,365.315,1126.854,371.753,1106.26C378.191,1085.667,378.191,1068.333,378.191,1051C378.191,1033.667,378.191,1016.333,378.191,999C378.191,981.667,378.191,964.333,378.191,947C378.191,929.667,378.191,912.333,378.191,893C378.191,873.667,378.191,852.333,378.191,831C378.191,809.667,378.191,788.333,374.018,773.944C369.845,759.554,361.499,752.109,357.326,748.386L353.153,744.663" id="L_GATE_S4_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_GATE_S4_0" data-points="W3sieCI6MzM5LjU2MjE1NDUyNzUzNTMsInkiOjExNzQuNTYyMTU0NTI3NTM1M30seyJ4IjozNzguMTkxNDA2MjUsInkiOjExMDN9LHsieCI6Mzc4LjE5MTQwNjI1LCJ5IjoxMDUxfSx7IngiOjM3OC4xOTE0MDYyNSwieSI6OTk5fSx7IngiOjM3OC4xOTE0MDYyNSwieSI6OTQ3fSx7IngiOjM3OC4xOTE0MDYyNSwieSI6ODk1fSx7IngiOjM3OC4xOTE0MDYyNSwieSI6ODMxfSx7IngiOjM3OC4xOTE0MDYyNSwieSI6NzY3fSx7IngiOjM1MC4xNjc5MTczNTE5NzM3LCJ5Ijo3NDJ9XQ==" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path><path d="M293,1393.641L293,1399.807C293,1405.974,293,1418.307,293,1429.974C293,1441.641,293,1452.641,293,1458.141L293,1463.641" id="L_GATE_OUT_0" class=" edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_GATE_OUT_0" data-points="W3sieCI6MjkzLCJ5IjoxMzkzLjY0MDYyNX0seyJ4IjoyOTMsInkiOjE0MzAuNjQwNjI1fSx7IngiOjI5MywieSI6MTQ2Ny42NDA2MjV9XQ==" marker-end="url(#mermaid-1781628180071_flowchart-v2-pointEnd)"></path></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="L_IN_S1_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S1_S2_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S2_S3a_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S2_S3b_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S3a_S4_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S3b_S4_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S4_S4b_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S4b_S6_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S6_S7_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_S7_GATE_0" transform="translate(0, 0)"><foreignObject width="0" height="20"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(378.19140625, 947)"><g class="label" data-id="L_GATE_S4_0" transform="translate(-27.1171875, -12)"><foreignObject width="54.234375" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>missing</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(293, 1430.640625)"><g class="label" data-id="L_GATE_OUT_0" transform="translate(-24.015625, -12)"><foreignObject width="48.03125" height="44"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel "><p>all true</p></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default  " id="flowchart-IN-0" transform="translate(293, 83)"><rect class="basic label-container" style="" x="-156.1015625" y="-75" width="312.203125" height="150"></rect><g class="label" style="" transform="translate(-126.1015625, -60)"><rect></rect><foreignObject width="252.203125" height="140"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>INPUTS<br>${PLATFORM} ${MODULE} ${NEW_VERSION}<br>${RELEASE_DATE} ${OTHER_PLATFORM_SYNCING}</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S1-1" transform="translate(293, 247)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>step 1: read current pin → OLD_VERSION</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S2-3" transform="translate(293, 375)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>step 2: run diff tool → diff.json (GROUND TRUTH)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S3a-5" transform="translate(138, 527)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>step 3a: decide from api_diff</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S3b-7" transform="translate(448, 527)"><rect class="basic label-container" style="" x="-130" y="-63" width="260" height="126"></rect><g class="label" style="" transform="translate(-100, -48)"><rect></rect><foreignObject width="200" height="116"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>step 3b: RECALL PASS from changelog<br>(catch the ~20% regex missed)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S4-9" transform="translate(293, 691)"><rect class="basic label-container" style="" x="-130" y="-51" width="260" height="102"></rect><g class="label" style="" transform="translate(-100, -36)"><rect></rect><foreignObject width="200" height="92"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>step 4: apply across bridges<br>JS + Android 3-touch + iOS 2-touch</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S4b-13" transform="translate(207.80859375, 831)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"></rect><g class="label" style="" transform="translate(-100, -24)"><rect></rect><foreignObject width="200" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel "><p>step 4b: demo in ALL 4 sample apps</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S6-15" transform="translate(207.80859375, 947)"><rect class="basic label-container" style="" x="-108.265625" y="-27" width="216.53125" height="54"></rect><g class="label" style="" transform="translate(-78.265625, -12)"><rect></rect><foreignObject width="156.53125" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>step 6: bump versions</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-S7-17" transform="translate(207.80859375, 1051)"><rect class="basic label-container" style="" x="-126.4765625" y="-27" width="252.953125" height="54"></rect><g class="label" style="" transform="translate(-96.4765625, -12)"><rect></rect><foreignObject width="192.953125" height="44"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>step 7: write CHANGELOG</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-GATE-19" transform="translate(293, 1260.8203125)"><polygon points="132.8203125,0 265.640625,-132.8203125 132.8203125,-265.640625 0,-132.8203125" class="label-container" transform="translate(-132.3203125, 132.8203125)"></polygon><g class="label" style="" transform="translate(-93.8203125, -24)"><rect></rect><foreignObject width="187.640625" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>completion gate<br>(re-open each file &amp; verify)</p></span></div></foreignObject></g></g><g class="node default  " id="flowchart-OUT-23" transform="translate(293, 1506.640625)"><rect class="basic label-container" style="" x="-106.46875" y="-39" width="212.9375" height="78"></rect><g class="label" style="" transform="translate(-76.46875, -24)"><rect></rect><foreignObject width="152.9375" height="68"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel "><p>emit structured JSON<br>(the PR body)</p></span></div></foreignObject></g></g></g></g></g></svg></div></div>
+  </div>
+  <script type="text/plain" class="diagram-source">
+flowchart TD
+    IN["INPUTS<br/>${PLATFORM} ${MODULE} ${NEW_VERSION}<br/>${RELEASE_DATE} ${OTHER_PLATFORM_SYNCING}"] --> S1["step 1: read current pin &rarr; OLD_VERSION"]
+    S1 --> S2["step 2: run diff tool &rarr; diff.json (GROUND TRUTH)"]
+    S2 --> S3a["step 3a: decide from api_diff"]
+    S2 --> S3b["step 3b: RECALL PASS from changelog<br/>(catch the ~20% regex missed)"]
+    S3a --> S4["step 4: apply across bridges<br/>JS + Android 3-touch + iOS 2-touch"]
+    S3b --> S4
+    S4 --> S4b["step 4b: demo in ALL 4 sample apps"]
+    S4b --> S6["step 6: bump versions"]
+    S6 --> S7["step 7: write CHANGELOG"]
+    S7 --> GATE{"completion gate<br/>(re-open each file &amp; verify)"}
+    GATE -- "missing" --> S4
+    GATE -- "all true" --> OUT["emit structured JSON<br/>(the PR body)"]
+  </script>
+</section>
+<div class="callout callout--amber">
+  <div class="callout__label">Analogy</div>
+  <p>Think of it as a recipe a chef follows with nobody in the kitchen to ask. It must be unambiguous, name every ingredient, and end with a &ldquo;before you plate it, check all of this&rdquo; list — because if a step is skipped, the dish ships broken. &ldquo;Auto-apply mode&rdquo; is &ldquo;the chef cooks the whole meal without calling out for approval.&rdquo;</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">01</span>Key section 1 — Auto-apply mode (the execution model)</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">text</span><span class="file">prompts/sync-orchestrator-cordova.md</span></div>
+  <pre>You have NO human in the loop. Do not ask questions. ... wherever any skill says
+"wait for user acknowledgment", "Reply with Approved / Hold", ... treat that as:
+make the best-judgment decision, proceed, and record it in your structured output.
+Never stop and wait.</pre>
+</div>
+<p><strong>Read as:</strong> <em>&ldquo;This program runs in batch mode. There is no <code>input()</code> call available.&rdquo;</em> The skills it reuses were written for an interactive human; this line <strong>rewrites</strong> every &ldquo;ask the user&rdquo; branch into &ldquo;decide and log it.&rdquo; Without this, Claude would stall forever waiting for a reply that never comes.</p>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is "auto-apply mode" / "no human in the loop"?</div>
+  <p>Normally Claude Code can pause and ask you a question. Here it runs inside CI with nobody watching (<a href="walk-claude-sync-action.html">headless <code>claude -p</code></a>). So the prompt forbids questions: every decision point becomes &ldquo;make the call, write down why.&rdquo; The <em>why</em> lands in the JSON that becomes the PR description, so a human reviews the decisions <strong>after</strong> the fact, on the PR — not during the run.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">02</span>Key section 2 — diff tool is GROUND TRUTH, changelog is a RECALL PASS</h2>
+<p>This is the most important idea in the whole system. Two detection sources, used for different jobs:</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">text</span><span class="file">prompts/sync-orchestrator-cordova.md</span></div>
+  <pre>Read the resulting diff.json ... This is your ground truth. It has three parts:
+  - api_diff — added / removed / changed public methods. This drives what you wrap.
+  ...
+The changelog is a SECOND detection source — not just narrative. The diff tool is
+regex-based (~80% coverage) and can miss real API changes: multi-line signatures,
+@JvmOverloads, Kotlin default-param methods, etc.</pre>
+</div>
+<p><strong>Read as:</strong> <em>&ldquo;Trust <code>api_diff</code> as the primary list. But because the extractor is regex-based it misses ~20%, so do a second pass over the human changelog to catch what slipped through.&rdquo;</em></p>
+<div class="data-table-wrap">
+<table class="data-table">
+  <thead><tr><th>Source</th><th>Role</th><th>What does it answer?</th></tr></thead>
+  <tbody>
+<tr><td><code>api_diff</code> (from the diff tool)</td><td><strong>Ground truth</strong> — drives what you wrap</td><td>&ldquo;What changed, machine-verified.&rdquo;</td></tr>
+<tr><td><code>changelog</code> (<code>target_entry</code> + <code>intermediate_entries</code>)</td><td><strong>Recall pass</strong> — catches the regex's misses</td><td>&ldquo;What did the SDK team <em>say</em> changed?&rdquo;</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: what is a "recall pass"?</div>
+  <p>&ldquo;Recall&rdquo; is a search term: <em>of everything that truly changed, how much did we find?</em> The regex diff has high precision but imperfect recall (~80%). Re-reading the changelog is a <strong>second sweep</strong> to raise recall — anything the changelog names that the diff missed gets checked against the source and either implemented or flagged. <code>intermediate_entries</code> covers releases skipped between the old pin and the new version.</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">03</span>Key section 3 — the source-verification GATE (the anti-hallucination rule)</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">text</span><span class="file">prompts/sync-orchestrator-cordova.md</span></div>
+  <pre>Source verification — MANDATORY before writing ANY native call
+... Before you write ANY call to a native SDK symbol ... confirm its exact name and
+signature in the cached native source at the NEW version. ...
+HOW to check — use the Read / Grep / Glob TOOLS, not Bash. ...
+If you cannot find the symbol in the native source, do NOT write the call. Put the
+item in flagged_for_review (type "unconfirmed") ...</pre>
+</div>
+<p><strong>Read as:</strong> <em>&ldquo;Before emitting any line that calls a native method, <code>grep</code> the actual SDK header to prove the method exists. No proof &rarr; don't write it &rarr; flag it instead.&rdquo;</em> This is the single biggest guard against a broken build, because the classic failure is Claude confidently calling a method/selector that doesn't exist. Note the ObjC example in the prompt: <code>recordChargedEventWithDetails:andItems:</code> is <strong>not</strong> <code>recordChargedEventWithDetails:items:</code> — a selector includes every named part.</p>
+<p>The prompt even anticipates a tooling quirk: Bash on paths outside the working dir is <strong>denied</strong> by the <a href="walk-claude-sync-action.html">allowlist</a>, so it tells Claude to use the Read/Grep/Glob <em>tools</em> on the cache path instead. Each surfaced item records <code>"source_verified": true|false</code>.</p>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: why a "verification gate" at all?</div>
+  <p>An LLM can produce plausible-looking-but-wrong code (a &ldquo;hallucinated&rdquo; method name). For a <em>compiled</em> bridge that's a build break. The gate converts &ldquo;I think this method exists&rdquo; into &ldquo;I read the header and it does&rdquo; — and if it can't, the item is <strong>flagged</strong> for a human rather than guessed. &ldquo;A flagged gap is recoverable; a guessed selector is a broken build.&rdquo;</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">04</span>Key section 4 — the Android 3-touch rule (a loop body that must not skip)</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">text</span><span class="file">prompts/sync-orchestrator-cordova.md</span></div>
+  <pre>Android — the THREE touches (a missed one is a silent runtime no-op, not a compile error):
+  1. src/android/CleverTapFunction.java — add the enum constant ...
+  2. src/android/CleverTapPlugin.java — add the case in the execute() switch.
+  3. src/android/CleverTapPlugin.java — add the private implementation ...</pre>
+</div>
+<p><strong>Read as:</strong> <em>&ldquo;For each Android API, you must edit three places. Miss one and it still compiles — it just silently does nothing at runtime.&rdquo;</em> That last clause is why the prompt hammers it: a missed touch produces <strong>no error</strong>, so the only defense is the discipline of doing all three every time. iOS is the analogous <strong>2-touch</strong> (<code>.h</code> declaration + <code>.m</code> implementation), and the JS action string must be <strong>identical</strong> across the JS <code>cordova.exec</code>, the Android enum string, and the iOS selector.</p>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: why is "3-touch" dangerous, and what is a "silent no-op"?</div>
+  <p>A <strong>silent no-op</strong> is code that runs without error but does nothing. If you add the JS method and the <code>execute()</code> case but forget the enum constant, the app compiles and the method <em>exists</em> — it just never reaches the implementation. No crash, no warning. That's far worse than a compile error (which you'd catch immediately), so the rule is &ldquo;always all three, then re-verify.&rdquo;</p>
+</div>
+<hr class="rule">
+<h2><span class="h2-mark">05</span>Key section 5 — the completion gate (the program's assert block)</h2>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">text</span><span class="file">prompts/sync-orchestrator-cordova.md</span></div>
+  <pre>Before you emit — completion gate (MANDATORY)
+You are NOT done until every item below is true. Before emitting the structured
+JSON, re-open each file and verify — do not rely on memory. ...
+For each API in your surfaced list:
+  [ ] JS — CleverTap.prototype.&lt;action&gt; in www/CleverTap.js.
+  [ ] Android — enum constant + case + private method.
+  [ ] iOS — declaration + implementation.
+  [ ] Every native symbol it calls was source-verified ...
+  [ ] Example demo added in all 4 sample apps ...</pre>
+</div>
+<p><strong>Read as:</strong> <em>&ldquo;A block of <code>assert</code> statements that must all pass before <code>return</code>.&rdquo;</em> Crucially it says <strong>re-open each file and verify — do not rely on memory</strong>, because across a long run Claude's memory of &ldquo;I did that&rdquo; can drift from what's actually on disk. The gate forces a fresh read. Only when every box is genuinely checked does it proceed to emit.</p>
+<hr class="rule">
+<h2><span class="h2-mark">06</span>Key section 6 — the output schema (the return value)</h2>
+<p>The program ends by writing one JSON object to stdout — captured by CI to <code>claude-output-${PLATFORM}.json</code> (the <a href="walk-claude-sync-action.html">claude-sync action</a> extracts it; the PR generator renders it):</p>
+<div class="code-card">
+  <div class="code-card__head"><span class="lang">json</span><span class="file">claude-output-${PLATFORM}.json (shape)</span></div>
+  <pre>{
+  "platform": "${PLATFORM}", "module": "${MODULE}",
+  "old_version": "&lt;resolved&gt;", "new_version": "${NEW_VERSION}",
+  "surfaced": [ {"name": "...", "rationale": "...", "files_touched": ["..."], "source_verified": true} ],
+  "skipped": [ ... ], "deferred": [ ... ],
+  "flagged_for_review": [ {"type": "removal|deprecation|signature|behavior|unconfirmed", ...} ],
+  "build_propagated": [ ... ],
+  "version_bump": { "from": "5.0.0", "to": "5.1.0", "bump_type": "minor", "rationale": "..." },
+  "docs_updated": ["CHANGELOG.md", "README.md"],
+  "native_changelogs": { "target_version": "...", "target_entry": "...", "intermediate_entries": [...] },
+  "tokens_used": 0, "cost_usd_estimate": 0.0
+}</pre>
+</div>
+<p>Each list is a &ldquo;bucket&rdquo; for a different decision: <strong><code>surfaced</code></strong> = implemented, <strong><code>skipped</code></strong> = deliberately not, <strong><code>deferred</code></strong> = needs a human follow-up, <strong><code>flagged_for_review</code></strong> = couldn't be safely auto-applied (this is where the verification gate sends its uncertain cases). <code>native_changelogs</code> is <strong>required</strong> — it's pasted verbatim so the PR body can render the full native release narrative. Even on a hard error, the prompt insists on <strong>valid JSON with an <code>error</code> field</strong> so CI can handle it cleanly instead of crashing.</p>
+<div class="callout callout--info">
+  <div class="callout__label">Beginner sidebar: why does a prompt define a JSON schema?</div>
+  <p>Because the prompt's output is consumed by <em>other programs</em> (cost script, PR-description generator), not just read by a human. A fixed schema is the contract between Claude and those scripts — same reason a function documents its return type. The <code>flagged_for_review</code> bucket is how an <em>autonomous</em> agent stays safe: anything it isn't sure about goes to a human instead of into the code.</p>
+</div>
+<div class="check-block">
+  <div class="check-head">Check yourself</div>
+<details class="qcard">
+  <summary>What is the difference between the diff tool (ground truth) and the changelog (recall pass)?</summary>
+  <div class="answer">
+    <p><code>api_diff</code> from the diff tool is the <strong>primary, machine-verified</strong> list of what changed and drives what gets wrapped. The changelog is a <strong>second sweep</strong> to catch the ~20% the regex extractor misses (multi-line signatures, <code>@JvmOverloads</code>, Kotlin default params). Changelog-named items not in <code>api_diff</code> are verified against source, then implemented or flagged.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why does the prompt forbid writing a native call before checking the source?</summary>
+  <div class="answer">
+    <p>To prevent hallucinated method/selector names that compile-break (or worse). The rule turns &ldquo;I think this exists&rdquo; into &ldquo;I grepped the header and it does.&rdquo; If the symbol can't be confirmed, the item goes to <code>flagged_for_review</code> (type <code>unconfirmed</code>) rather than being guessed.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>Why is a missed Android "touch" called a silent no-op — and why is that worse than a compile error?</summary>
+  <div class="answer">
+    <p>Forgetting one of the three Android edits (enum constant / <code>execute()</code> case / private method) still <strong>compiles</strong>, but the method never reaches its implementation — it runs and does nothing, with no error. A compile error would be caught instantly; a silent no-op ships unnoticed, so the prompt mandates all three plus a re-verify.</p>
+  </div>
+</details>
+<details class="qcard">
+  <summary>What does "re-open each file and verify — do not rely on memory" protect against?</summary>
+  <div class="answer">
+    <p>Over a long autonomous run, the model's recollection of &ldquo;I edited that&rdquo; can diverge from the actual file contents. The completion gate forces a fresh read of each file so the emitted JSON reflects what's truly on disk, not what Claude <em>thinks</em> it did.</p>
+  </div>
+</details>
+</div>
+</main>
+
+<footer class="kit-foot">
+  <a href="walk-build-cordova-action.html">&#9664; The Cordova Build Action</a>
+  <a href="index.html">&#8962; Kit home</a>
+  <a href="walk-wrapper-dispatch.html">The Trigger Form &#9654;</a>
+</footer>
+
+<script>
+
+  const config = {
+    fitPadding: 28,
+    minHeight: 360,
+    maxHeightPx: 1100,
+    maxHeightVh: 0.86,
+    maxInitialZoom: 1.8,
+    minZoom: 0.08,
+    maxZoom: 6.5,
+    zoomStep: 0.14,
+    readabilityFloor: 0.5
+  };
+
+  const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  let activeDrag = null;
+  addEventListener('mousemove', (e) => activeDrag?.onMove(e));
+  addEventListener('mouseup', () => { activeDrag?.onEnd(); activeDrag = null; });
+
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const pageBg = isDark ? '#0b1626' : '#eef2f7';
+
+
+  function initDiagram(shell) {
+    const wrap = shell.querySelector('.mermaid-wrap');
+    const viewport = shell.querySelector('.mermaid-viewport');
+    const canvas = shell.querySelector('.mermaid-canvas');
+    const source = shell.querySelector('.diagram-source');
+    const label = shell.querySelector('.zoom-label');
+    if (!wrap || !viewport || !canvas || !source || !label) {
+      console.error('initDiagram: missing required elements in', shell);
+      return;
+    }
+
+    let zoom = 1, fitMode = 'contain', panX = 0, panY = 0, svgW = 0, svgH = 0;
+    let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+
+    function constrainPan() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const rW = svgW * zoom, rH = svgH * zoom, pad = config.fitPadding;
+      panX = (rW + pad * 2 <= vpW) ? (vpW - rW) / 2 : clamp(panX, vpW - rW - pad, pad);
+      panY = (rH + pad * 2 <= vpH) ? (vpH - rH) / 2 : clamp(panY, vpH - rH - pad, pad);
+    }
+    function applyTransform() {
+      const svg = canvas.querySelector('svg');
+      if (!svg || !svgW) return;
+      constrainPan();
+      svg.style.width = (svgW * zoom) + 'px';
+      svg.style.height = (svgH * zoom) + 'px';
+      canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+      label.textContent = Math.round(zoom * 100) + '% — ' + fitMode;
+    }
+    function canPan() {
+      const rW = svgW * zoom, rH = svgH * zoom;
+      return rW + config.fitPadding * 2 > viewport.clientWidth
+          || rH + config.fitPadding * 2 > viewport.clientHeight;
+    }
+    function computeSmartFit() {
+      const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
+      const aW = Math.max(80, vpW - config.fitPadding * 2);
+      const aH = Math.max(80, vpH - config.fitPadding * 2);
+      const contain = Math.min(aW / svgW, aH / svgH);
+      let z = contain, mode = 'contain';
+      if (contain < config.readabilityFloor) {
+        const chartR = svgH / svgW, vpR = vpH / Math.max(vpW, 1);
+        if (chartR >= vpR) { z = aW / svgW; mode = 'width-priority'; }
+        else { z = aH / svgH; mode = 'height-priority'; }
+      }
+      return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
+    }
+    function fitDiagram() {
+      if (!svgW) return;
+      const fit = computeSmartFit();
+      zoom = fit.zoom; fitMode = fit.mode;
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function setOneToOne() {
+      zoom = clamp(1, config.minZoom, config.maxZoom);
+      fitMode = '1:1';
+      panX = (viewport.clientWidth - svgW * zoom) / 2;
+      panY = (viewport.clientHeight - svgH * zoom) / 2;
+      applyTransform();
+    }
+    function zoomAround(factor, cx, cy) {
+      const next = clamp(zoom * factor, config.minZoom, config.maxZoom);
+      const ratio = next / zoom;
+      panX = cx - ratio * (cx - panX);
+      panY = cy - ratio * (cy - panY);
+      zoom = next; fitMode = 'custom';
+      applyTransform();
+    }
+    function readSvgNaturalSize(svg) {
+      let w = 0, h = 0;
+      if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
+      if (!w) { w = parseFloat(svg.getAttribute('width')) || 0; h = parseFloat(svg.getAttribute('height')) || 0; }
+      if (!w) { const b = svg.getBBox(); w = b.width; h = b.height; }
+      if (!w) { const r = svg.getBoundingClientRect(); w = r.width || 1000; h = r.height || 700; }
+      if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      return { w, h };
+    }
+    function setAdaptiveHeight() {
+      if (!svgW) return;
+      const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+      const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
+      const maxVp = Math.floor(innerHeight * config.maxHeightVh);
+      const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight + 40, maxVp));
+      wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + 'px';
+    }
+    function openInNewTab() {
+      const svg = canvas.querySelector('svg');
+      if (!svg) return;
+      const clone = svg.cloneNode(true);
+      clone.style.width = ''; clone.style.height = '';
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Diagram</title><style>
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:${pageBg};padding:40px;box-sizing:border-box}
+      svg{max-width:100%;max-height:90vh;height:auto}
+      </style></head><body>${clone.outerHTML}</body></html>`;
+      open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+    }
+    function render() {
+      const svgNode = canvas.querySelector('svg');
+      if (!svgNode) { label.textContent = 'Error: No diagram'; return; }
+      const size = readSvgNaturalSize(svgNode);
+      svgW = size.w; svgH = size.h;
+      svgNode.removeAttribute('width');
+      svgNode.removeAttribute('height');
+      svgNode.style.maxWidth = 'none';
+      svgNode.style.display = 'block';
+      setAdaptiveHeight();
+      fitDiagram();
+    }
+
+    const actions = {
+      'zoom-in': () => zoomAround(1 + config.zoomStep, viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-out': () => zoomAround(1 / (1 + config.zoomStep), viewport.clientWidth / 2, viewport.clientHeight / 2),
+      'zoom-fit': fitDiagram,
+      'zoom-one': setOneToOne,
+      'zoom-expand': openInNewTab
+    };
+    Object.entries(actions).forEach(([action, handler]) => {
+      wrap.querySelector(`[data-action="${action}"]`)?.addEventListener('click', handler);
+    });
+
+    viewport.addEventListener('dblclick', fitDiagram);
+
+    viewport.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep);
+        zoomAround(factor, e.clientX - rect.left, e.clientY - rect.top);
+        return;
+      }
+      if (canPan()) {
+        e.preventDefault();
+        panX -= e.deltaX; panY -= e.deltaY;
+        applyTransform();
+      }
+    }, { passive: false });
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.zoom-controls') || !canPan()) return;
+      wrap.classList.add('is-panning');
+      sx = e.clientX; sy = e.clientY; spx = panX; spy = panY;
+      e.preventDefault();
+      activeDrag = {
+        onMove: (ev) => { panX = spx + (ev.clientX - sx); panY = spy + (ev.clientY - sy); applyTransform(); },
+        onEnd: () => { wrap.classList.remove('is-panning'); }
+      };
+    });
+
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY;
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        touchDist = Math.sqrt(dx * dx + dy * dy);
+        const r = viewport.getBoundingClientRect();
+        touchCx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+        touchCy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      }
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1 && canPan()) {
+        if (touchDist > 0) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; spx = panX; spy = panY; touchDist = 0; }
+        e.preventDefault();
+        panX = spx + (e.touches[0].clientX - sx);
+        panY = spy + (e.touches[0].clientY - sy);
+        applyTransform();
+      } else if (e.touches.length === 2 && touchDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        zoomAround(d / touchDist, touchCx, touchCy);
+        touchDist = d;
+      }
+    }, { passive: false });
+
+    new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
+
+    render();
+  }
+
+  document.querySelectorAll('.diagram-shell').forEach(initDiagram);
+</script>
+</body>
+</html>
