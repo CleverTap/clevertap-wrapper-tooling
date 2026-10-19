@@ -18,7 +18,7 @@ These skills hold the authoritative Flutter conventions and are available in thi
 - `native-sdk-changelog-analysis` — at triage/recall (steps 3/3b): change categorization + decision tree + type-compatibility. (In CI: SKIP its Step 1 WebFetch — the changelog comes from the diff tool — and SKIP its Step 6 "wait for user acknowledgment".)
 - `api-wrapper-patterns` — at implementation (step 4): **MANDATORY** Dart/Android/iOS wrapper patterns, type mapping, code style.
 - `example-app-patterns` — at the Example-demo step (4b): how to add a demo in `example/lib/main.dart`.
-- `version-detection` — at the version bump (step 6): the **7 version-file locations** + `libVersion` integer conversion.
+- `version-detection` — at the version bump (step 6): the **8 version-file locations** + `libVersion` integer conversion.
 - `changelog-generation` — at the CHANGELOG step (step 7): exact `CHANGELOG.md` format, platform tags, version-anchor links.
 
 ## What to do
@@ -80,10 +80,10 @@ These skills hold the authoritative Flutter conventions and are available in thi
    - New always-required Android permissions → declare in the plugin's `AndroidManifest.xml`.
    - Record each propagation in `build_propagated`.
 
-6. **Bump versions** using the `version-detection` skill's 7-location table:
+6. **Bump versions** using the `version-detection` skill's 8-location table:
    - **Native pin for THIS platform** → set to `${NEW_VERSION}`:
      - Android: location 3 — `clevertap-android-sdk:${NEW_VERSION}` in `android/build.gradle`.
-     - iOS: location 5 — `CleverTap-iOS-SDK', '${NEW_VERSION}'` in `ios/clevertap_plugin.podspec`.
+     - iOS: location 5 — `CleverTap-iOS-SDK', '${NEW_VERSION}'` in `ios/clevertap_plugin.podspec` **AND location 8 — `exact: "${NEW_VERSION}"` in `ios/clevertap_plugin/Package.swift`** (the Swift Package Manager pin; SPM host apps resolve the native SDK from this file, so 5 and 8 must always match).
    - **The wrapper's OWN version** (locations 1, 2, 4, 6, 7) → bump by semver:
      - **Patch**: no API changes surfaced; native pin bump only.
      - **Minor** (common): one or more additive APIs surfaced; no breaking changes.
@@ -154,10 +154,11 @@ For each API in your `surfaced` list:
 - [ ] **Every native symbol it calls was source-verified** against the cached native source (`source_verified: true`) — or the item lives in `flagged_for_review`, not `surfaced`.
 - [ ] **Example-app demo** added in `example/lib/main.dart`.
 
-Version bump (the **7 locations** from `version-detection`) — every one of these must be edited:
+Version bump (the **8 locations** from `version-detection`) — every one of these must be edited:
 - [ ] `pubspec.yaml` (`version:`)
 - [ ] `android/build.gradle` (top `version` **and** the `clevertap-android-sdk` pin)
 - [ ] `ios/clevertap_plugin.podspec` (`s.version` **and** the `CleverTap-iOS-SDK` pin)
+- [ ] `ios/clevertap_plugin/Package.swift` (`exact: "X.Y.Z"` iOS SDK pin — MUST equal the podspec's `CleverTap-iOS-SDK` pin; only when syncing iOS)
 - [ ] `lib/clevertap_plugin.dart` (`libVersion` integer)
 - [ ] `README.md` (`clevertap_plugin: X.Y.Z`)
 
