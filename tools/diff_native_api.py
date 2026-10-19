@@ -161,33 +161,62 @@ def acquire_sources(
     cache_dir: Path,
     no_cache: bool,
 ) -> Path:
-    """Return a directory holding the SDK source tree at the requested tag."""
+    """Return a directory holding the SDK source tree at the requested tag.
+
+    Tag resolution: the exact tag (e.g. corev8.5.0) is preferred, but native
+    releases are sometimes published only under a COMBINED tag when two modules
+    ship together (e.g. corev8.5.0_ptv2.7.0 = core 8.5.0 + pushtemplates 2.7.0).
+    When the exact tag does not exist, fall back to a `<tag>_*` match.
+    """
     repo, tag_fmt = REPOS[(platform, module)]
     tag = tag_fmt.format(ver=version)
     repo_slug = repo.split("/")[-1]
 
-    # 1. Local clone with the tag available
+    # 1. Local clone with the tag (exact or combined) available
     if local_path and local_path.exists():
-        if _git_has_tag(local_path, tag):
-            extract_dir = cache_dir / f"{repo_slug}-{tag}-fromlocal"
+        local_tag = _resolve_local_tag(local_path, tag)
+        if local_tag:
+            if local_tag != tag:
+                print(f"[diff] using combined tag {local_tag} for {tag} (local)", file=sys.stderr)
+            extract_dir = cache_dir / f"{repo_slug}-{local_tag}-fromlocal"
             extract_dir.mkdir(parents=True, exist_ok=True)
-            _git_archive_to_dir(local_path, tag, extract_dir)
+            _git_archive_to_dir(local_path, local_tag, extract_dir)
             return extract_dir
         else:
             print(
-                f"[diff] local clone at {local_path} does not have tag {tag}; "
-                f"falling through to cache/tarball",
+                f"[diff] local clone at {local_path} does not have tag {tag} "
+                f"(or a {tag}_* combined tag); falling through to cache/tarball",
                 file=sys.stderr,
             )
 
-    # 2. Cache hit
+    # 2. Cache hit — exact tag, else a previously-resolved combined tag
     cache_target = cache_dir / f"{repo_slug}-{tag}"
     if cache_target.exists() and not no_cache:
         return cache_target
+    combined_cached = sorted(cache_dir.glob(f"{repo_slug}-{tag}_*")) if cache_dir.exists() else []
+    combined_cached = [p for p in combined_cached if p.is_dir() and not p.name.endswith("-fromlocal")]
+    if combined_cached and not no_cache:
+        print(f"[diff] using cached combined tag {combined_cached[0].name}", file=sys.stderr)
+        return combined_cached[0]
 
-    # 3. Tarball download
+    # 3. Tarball download — exact tag first; on 404, look up a combined tag
     cache_dir.mkdir(parents=True, exist_ok=True)
-    return _download_and_extract(repo, tag, cache_dir, cache_target)
+    try:
+        return _download_and_extract(repo, tag, cache_dir, cache_target)
+    except _TagNotFound:
+        combined = _find_combined_tag(repo, tag)
+        if not combined:
+            raise SystemExit(
+                f"[diff] tag {tag} does not exist on {repo}, and no combined "
+                f"{tag}_* tag was found either. Confirm the release at "
+                f"https://github.com/{repo}/tags ."
+            )
+        print(f"[diff] exact tag {tag} not found; using combined tag {combined}", file=sys.stderr)
+        return _download_and_extract(repo, combined, cache_dir, cache_dir / f"{repo_slug}-{combined}")
+
+
+class _TagNotFound(Exception):
+    """Raised when a tag tarball download gets an HTTP 404."""
 
 
 def _git_has_tag(repo_path: Path, tag: str) -> bool:
@@ -199,6 +228,48 @@ def _git_has_tag(repo_path: Path, tag: str) -> bool:
         return True
     except subprocess.CalledProcessError:
         return False
+
+
+def _resolve_local_tag(repo_path: Path, tag: str) -> Optional[str]:
+    """Exact tag if the local clone has it, else the first `<tag>_*` combined tag."""
+    if _git_has_tag(repo_path, tag):
+        return tag
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", str(repo_path), "tag", "--list", f"{tag}_*"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
+    matches = sorted(line.strip() for line in out.splitlines() if line.strip())
+    if len(matches) > 1:
+        print(f"[diff] multiple combined tags match {tag}_*: {matches}; using {matches[0]}", file=sys.stderr)
+    return matches[0] if matches else None
+
+
+def _find_combined_tag(repo: str, tag: str) -> Optional[str]:
+    """Query the GitHub refs API for `<tag>_*` combined tags (e.g. corev8.5.0_ptv2.7.0).
+
+    Only called after the exact tag 404'd, so the API cost is confined to the
+    failure path. Uses GITHUB_TOKEN / GH_TOKEN when present (optional).
+    """
+    url = f"https://api.github.com/repos/{repo}/git/matching-refs/tags/{tag}"
+    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            refs = json.load(resp)
+    except (urllib.error.URLError, json.JSONDecodeError) as e:
+        print(f"[diff] combined-tag lookup failed ({e}); treating as no match", file=sys.stderr)
+        return None
+    names = [r["ref"][len("refs/tags/"):] for r in refs if r.get("ref", "").startswith("refs/tags/")]
+    matches = sorted(n for n in names if n.startswith(f"{tag}_"))
+    if len(matches) > 1:
+        print(f"[diff] multiple combined tags match {tag}_*: {matches}; using {matches[0]}", file=sys.stderr)
+    return matches[0] if matches else None
 
 
 def _git_archive_to_dir(repo_path: Path, tag: str, dest: Path) -> None:
@@ -219,6 +290,8 @@ def _download_and_extract(repo: str, tag: str, cache_dir: Path, dest: Path) -> P
         with urllib.request.urlopen(url) as resp, open(tmp_tar, "wb") as f:
             shutil.copyfileobj(resp, f)
     except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise _TagNotFound(tag)
         raise SystemExit(
             f"[diff] failed to download tag {tag} from {repo}: HTTP {e.code}. "
             f"Confirm the tag exists at https://github.com/{repo}/tags ."
