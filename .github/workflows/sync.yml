@@ -78,10 +78,11 @@ on:
         type: string
         default: ''
       runs_on:
-        description: 'Runner image. Default macos-14. Expo (RN 0.83 / Expo SDK 55+) needs macos-15 for a new-enough Xcode/Swift toolchain to build expo-modules-core.'
+        description: 'Runner image. Default macos-15, which Expo (RN 0.83 / Expo SDK 55+) needs to build expo-modules-core.'
         required: false
         type: string
-        default: 'macos-14'
+        # GitHub retired macos-14, the tooling default, on 2026-11-02
+        default: 'macos-15'
     secrets:
       app_id:
         required: true
